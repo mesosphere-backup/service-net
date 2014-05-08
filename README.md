@@ -1,5 +1,7 @@
 # ServiceNet
 
+[![Build Status](https://travis-ci.org/mesosphere/service-net.png?branch=master)](https://travis-ci.org/mesosphere/service-net)
+
 ## Overview
 
 TODO
