@@ -19,6 +19,6 @@ TODO
 
 ## Authors
 
-- Jason Dusek (@solidsnack)
+- Jason Dusek ([@solidsnack](https://github.com/solidsnack))
 
-- Connor Doyle (@ConnorDoyle)
+- Connor Doyle ([@ConnorDoyle](https://github.com/ConnorDoyle))
