@@ -38,10 +38,18 @@ object ServiceNetBuild extends Build {
     id = PROJECT_NAME,
     base = file("."),
     settings = commonSettings ++
-      Seq(aggregate in update := false) ++
+      Seq(
+        aggregate in update := false,
+        mainClass in (Compile, packageBin) :=
+          Some("mesosphere.servicenet.http.HTTPServer"),
+        mainClass in (Compile, run) :=
+          Some("mesosphere.servicenet.http.HTTPServer")
+      ) ++
       assemblySettings ++
       graphSettings
-  ).aggregate(http, dsl)
+  )
+    .dependsOn(dsl, http)
+    .aggregate(dsl, http)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -71,8 +79,10 @@ object ServiceNetBuild extends Build {
     scalaVersion := SCALA_VERSION,
 
     libraryDependencies ++= Seq(
-      "com.typesafe"   % "config"    % TYPESAFE_CONFIG_VERSION,
-      "org.scalatest" %% "scalatest" % SCALATEST_VERSION % "test"
+      "com.typesafe"    % "config"            % TYPESAFE_CONFIG_VERSION,
+      "net.databinder" %% "unfiltered-filter" % UNFILTERED_VERSION,
+      "net.databinder" %% "unfiltered-jetty"  % UNFILTERED_VERSION,
+      "org.scalatest"  %% "scalatest"         % SCALATEST_VERSION % "test"
     ),
 
     scalacOptions in Compile ++= Seq(
