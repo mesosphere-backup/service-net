@@ -95,7 +95,7 @@ object ServiceNetBuild extends Build {
       "-Xlint:unchecked",
       "-source", "1.7",
       "-target", "1.7"
-    )
+    ),
 
     fork in Test := false
   )
