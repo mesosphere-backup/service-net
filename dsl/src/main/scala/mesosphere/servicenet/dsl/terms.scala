@@ -17,10 +17,25 @@ package mesosphere.servicenet.dsl
   *                over IPv4)
   */
 case class Doc(
-  interfaces: Seq[Interface],
-  dns: Seq[DNS],
-  nat: Seq[NAT],
-  tunnels: Seq[Tunnel])
+    interfaces: Seq[Interface],
+    dns: Seq[DNS],
+    nat: Seq[NAT],
+    tunnels: Seq[Tunnel]) {
+  def diff(other: Doc): Diff =
+    Diff(interfaces = Diff.diff(interfaces, other.interfaces),
+      dns = Diff.diff(dns, other.dns),
+      nat = Diff.diff(nat, other.nat),
+      tunnels = Diff.diff(tunnels, other.tunnels))
+}
+
+/**
+ * A network entity is a convenient unit of network configuration -- a virtual
+ * interface, a single DNS entry, a single tunnel -- for addition to and
+ * removal from a single host's network setup.
+ */
+trait NetworkEntity {
+  def name(): String
+}
 
 /**
   * A network diff describes changes to the service network. This diff is what
@@ -35,13 +50,22 @@ case class Diff(
   nat: Seq[Change[NAT]],
   tunnels: Seq[Change[Tunnel]])
 
+object Diff {
+  def diff[T <: NetworkEntity](a: Seq[T], b: Seq[T]): Seq[Change[T]] = {
+    val (one, two) = (Set(a: _*), Set(b: _*))
+    val remove: Set[Remove[T]] = (one &~ two).map(Remove(_))
+    val add: Set[Add[T]] = (two &~ one).map(Add(_))
+    val changes: Set[Change[T]] = add ++ remove
+    DNSNameSort.sort(changes.toSeq)
+  }
+}
+
 /**
-  * A network entity is a convenient unit of network configuration -- a virtual
-  * interface, a single DNS entry, a single tunnel -- for addition to and
-  * removal from a single host's network setup.
-  */
-trait NetworkEntity {
-  def name(): String
+ * Interpreters of the DSL implement this trait. Apply a diff to a doc to get
+ * an updated doc.
+ */
+trait Patch {
+  def patch(doc: Doc, diff: Diff): Doc
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -63,3 +87,4 @@ case class Remove[T <: NetworkEntity](name: String) extends Change[T]
 object Remove {
   def apply[T <: NetworkEntity](t: T): Remove[T] = Remove(t.name())
 }
+

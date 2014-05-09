@@ -16,8 +16,8 @@ sealed trait Tunnel extends NetworkEntity {
   * @param localEnd Local IPv4 end of the tunnel
   * @param remoteEnd Remote IPv4 end of the tunnel (gateway to net we want to
   *                  reach)
-  * @param addr Local IPv6 address to attach to tunnel (needed to ensure
-  *              interface can be found; the details elude me)
+  * @param addr Local IPv6 address to attach to tunnel (otherwise the interface
+  *             is never used, since it is not routable)
   * @param remoteIPv6Net The remote IPv6 network to which we're tunneling
   *                      traffic
   */
