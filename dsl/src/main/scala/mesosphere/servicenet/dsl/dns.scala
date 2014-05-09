@@ -1,7 +1,6 @@
-package mesosphere.servicenet.dsl.dns
+package mesosphere.servicenet.dsl
 
 import java.net.Inet6Address
-import mesosphere.servicenet.dsl.NetworkEntity
 
 //////////////////////////////////////////////////////////////////////////////
 //  DNS Record Types  ////////////////////////////////////////////////////////
@@ -10,14 +9,14 @@ import mesosphere.servicenet.dsl.NetworkEntity
 /**
   * IPv6 record
   */
-case class AAAA(label: String, addresses: Seq[Inet6Address]) extends Record {
+case class AAAA(label: String, addresses: Seq[Inet6Address]) extends DNS {
   val data: Seq[String] = addresses.map(_.getHostAddress)
 }
 
 /**
   * SRV record
   */
-case class SRV(label: String, endpoints: Seq[SRVData] = Seq()) extends Record {
+case class SRV(label: String, endpoints: Seq[SRVData] = Seq()) extends DNS {
   val data: Seq[String] = for (srv <- endpoints) yield {
     import srv._
     s"$priority $weight $port $target"
@@ -39,7 +38,7 @@ case class SRVData(
 /**
   * See http://www.zytrax.com/books/dns/ch8/#generic
   */
-sealed trait Record extends NetworkEntity {
+sealed trait DNS extends NetworkEntity {
   val label: String
   val recordType: String = getClass.getSimpleName.toUpperCase()
   val recordClass: String = "IN" // Internet class records are the norm
