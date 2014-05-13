@@ -51,9 +51,8 @@ object ServiceNetBuild extends Build {
       ) ++
       assemblySettings ++
       graphSettings
-  )
-    .dependsOn(dsl, http, ns, util)
-    .aggregate(dsl, http, ns, util)
+  ).dependsOn(dsl, http, ns, patch, util)
+   .aggregate(dsl, http, ns, patch, util)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -61,7 +60,7 @@ object ServiceNetBuild extends Build {
     id = subproject("dsl"),
     base = file("dsl"),
     settings = commonSettings
-  ) dependsOn (util)
+  ).dependsOn(util)
 
   lazy val http = Project(
     id = subproject("http"),
@@ -84,6 +83,12 @@ object ServiceNetBuild extends Build {
       )
     )
   ).dependsOn(dsl, util)
+
+  lazy val patch = Project(
+    id = subproject("patch"),
+    base = file("patch"),
+    settings = commonSettings
+  ).dependsOn(dsl)
 
   lazy val util = Project(
     id = subproject("util"),
@@ -135,7 +140,7 @@ object ServiceNetBuild extends Build {
     ScalariformKeys.preferences := FormattingPreferences()
       .setPreference(IndentWithTabs, false)
       .setPreference(IndentSpaces, 2)
-      .setPreference(AlignParameters, false)
+      .setPreference(AlignParameters, true)
       .setPreference(DoubleIndentClassDeclaration, true)
       .setPreference(MultilineScaladocCommentsStartOnFirstLine, false)
       .setPreference(PlaceScaladocAsterisksBeneathSecondAsterisk, true)
