@@ -48,6 +48,12 @@ case class Diff(interfaces: Seq[Change[Interface]],
                 dns: Seq[Change[DNS]],
                 nat: Seq[Change[NAT]],
                 tunnels: Seq[Change[Tunnel]]) extends ((Doc) => Doc) {
+  def apply(original: Doc): Doc = Doc(
+    interfaces = Diff.patch(interfaces, original.interfaces),
+    dns = Diff.patch(dns, original.dns),
+    nat = Diff.patch(nat, original.nat),
+    tunnels = Diff.patch(tunnels, original.tunnels)
+  )
 }
 
 object Diff {
@@ -58,14 +64,38 @@ object Diff {
     val changes: Set[Change[T]] = add ++ remove
     DNSNameSort.sort(changes.toSeq)
   }
+
+  def patch[T <: NetworkEntity](changes: Seq[Change[T]],
+                                entities: Seq[T]): Seq[T] = {
+    val removes: Seq[String] = for (Remove(name) <- changes) yield name
+    val adds: Map[String, T] =
+      (for (Add(e) <- changes) yield (e.name(), e)).toMap
+    val original: Map[String, T] = entities.map((e) => (e.name(), e)).toMap
+
+    (original -- removes ++ adds).values.toSeq
+  }
 }
 
 /**
-  * Interpreters of the DSL implement this trait. Apply a diff to a doc to get
-  * an updated doc.
+  * Interpreters of the DSL read a [[Diff]] and configure the system. The
+  * system is potentially a host's local network, a switch, or a combination of
+  * network systems. The system running the interpreter should use local
+  * information to determine which parts of the [[Diff]] are relevant to it.
   */
-trait Patch {
-  def patch(doc: Doc, diff: Diff): Doc
+trait Interpreter {
+  /**
+    * Apply a [[Diff]] to the system, updating the local network settings.
+    * @param diff
+    */
+  def interpret(diff: Diff)
+
+  /**
+    * An interpreter can accept a [[Doc]] along with the [[Diff]], for sanity
+    * checking.
+    * @param diff
+    * @param doc
+    */
+  def interpret(diff: Diff, doc: Doc) { interpret(diff) }
 }
 
 //////////////////////////////////////////////////////////////////////////////
