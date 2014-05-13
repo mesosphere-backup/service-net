@@ -2,7 +2,7 @@ package mesosphere.servicenet
 
 import org.scalatest._
 
-class ServiceNetSpec extends FlatSpec with Matchers {
+class HTTPServerSpec extends FlatSpec with Matchers {
 
   "HTTPServer" should "have some property" in {
     // check some property here
