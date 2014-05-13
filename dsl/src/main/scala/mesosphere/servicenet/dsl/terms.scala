@@ -16,23 +16,23 @@ package mesosphere.servicenet.dsl
   *                to connect the service network (for example, tunneling IPv6
   *                over IPv4)
   */
-case class Doc(
-    interfaces: Seq[Interface],
-    dns: Seq[DNS],
-    nat: Seq[NAT],
-    tunnels: Seq[Tunnel]) {
-  def diff(other: Doc): Diff =
-    Diff(interfaces = Diff.diff(interfaces, other.interfaces),
-      dns = Diff.diff(dns, other.dns),
-      nat = Diff.diff(nat, other.nat),
-      tunnels = Diff.diff(tunnels, other.tunnels))
+case class Doc(interfaces: Seq[Interface],
+               dns: Seq[DNS],
+               nat: Seq[NAT],
+               tunnels: Seq[Tunnel]) {
+  def diff(other: Doc): Diff = Diff(
+    interfaces = Diff.diff(interfaces, other.interfaces),
+    dns = Diff.diff(dns, other.dns),
+    nat = Diff.diff(nat, other.nat),
+    tunnels = Diff.diff(tunnels, other.tunnels)
+  )
 }
 
 /**
- * A network entity is a convenient unit of network configuration -- a virtual
- * interface, a single DNS entry, a single tunnel -- for addition to and
- * removal from a single host's network setup.
- */
+  * A network entity is a convenient unit of network configuration -- a virtual
+  * interface, a single DNS entry, a single tunnel -- for addition to and
+  * removal from a single host's network setup.
+  */
 trait NetworkEntity {
   def name(): String
 }
@@ -44,11 +44,11 @@ trait NetworkEntity {
   * Each parameter is a list of `Add`/`Remove` instances for the corresponding
   * parameter in `Doc`.
   */
-case class Diff(
-  interfaces: Seq[Change[Interface]],
-  dns: Seq[Change[DNS]],
-  nat: Seq[Change[NAT]],
-  tunnels: Seq[Change[Tunnel]])
+case class Diff(interfaces: Seq[Change[Interface]],
+                dns: Seq[Change[DNS]],
+                nat: Seq[Change[NAT]],
+                tunnels: Seq[Change[Tunnel]]) extends ((Doc) => Doc) {
+}
 
 object Diff {
   def diff[T <: NetworkEntity](a: Seq[T], b: Seq[T]): Seq[Change[T]] = {
@@ -61,9 +61,9 @@ object Diff {
 }
 
 /**
- * Interpreters of the DSL implement this trait. Apply a diff to a doc to get
- * an updated doc.
- */
+  * Interpreters of the DSL implement this trait. Apply a diff to a doc to get
+  * an updated doc.
+  */
 trait Patch {
   def patch(doc: Doc, diff: Diff): Doc
 }
