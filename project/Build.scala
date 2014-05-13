@@ -114,7 +114,8 @@ object ServiceNetBuild extends Build {
     organization := ORGANIZATION,
     scalaVersion := SCALA_VERSION,
 
-    resolvers += "bintray" at "http://jcenter.bintray.com",
+    resolvers +=
+      "Mesosphere Repo" at "http://downloads.mesosphere.io/maven",
 
     libraryDependencies ++= Seq(
       "com.typesafe"   % "config"    % TYPESAFE_CONFIG_VERSION,
