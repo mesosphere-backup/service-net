@@ -24,7 +24,11 @@ object ServiceNetBuild extends Build {
   // DEPENDENCY VERSIONS
   //////////////////////////////////////////////////////////////////////////////
 
+  val AKKA_VERSION            = "2.3.2"
   val DISPATCH_VERSION        = "0.11.1"
+  val DNS4S_VERSION           = "0.4-SNAPSHOT"
+  val LOGBACK_VERSION         = "1.1.2"
+  val SLF4J_VERSION           = "1.7.6"
   val UNFILTERED_VERSION      = "0.7.1"
   val TYPESAFE_CONFIG_VERSION = "1.2.0"
   val SCALATEST_VERSION       = "2.1.5"
@@ -47,9 +51,8 @@ object ServiceNetBuild extends Build {
       ) ++
       assemblySettings ++
       graphSettings
-  )
-    .dependsOn(dsl, http, patch)
-    .aggregate(dsl, http, patch)
+  ).dependsOn(dsl, http, ns, patch, util)
+   .aggregate(dsl, http, ns, patch, util)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -57,19 +60,47 @@ object ServiceNetBuild extends Build {
     id = subproject("dsl"),
     base = file("dsl"),
     settings = commonSettings
-  )
+  ).dependsOn(util)
 
   lazy val http = Project(
     id = subproject("http"),
     base = file("http"),
-    settings = commonSettings
-  ) dependsOn (dsl)
+    settings = commonSettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "net.databinder" %% "unfiltered-filter" % UNFILTERED_VERSION,
+        "net.databinder" %% "unfiltered-jetty"  % UNFILTERED_VERSION
+      )
+    )
+  ).dependsOn(dsl, util)
+
+  lazy val ns = Project(
+    id = subproject("ns"),
+    base = file("ns"),
+    settings = commonSettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "com.typesafe.akka" %% "akka-actor" % AKKA_VERSION,
+        "com.github.mkroli" %% "dns4s-akka" % DNS4S_VERSION
+      )
+    )
+  ).dependsOn(dsl, util)
 
   lazy val patch = Project(
     id = subproject("patch"),
     base = file("patch"),
     settings = commonSettings
-  ) dependsOn (dsl)
+  ).dependsOn(dsl)
+
+  lazy val util = Project(
+    id = subproject("util"),
+    base = file("util"),
+    settings = commonSettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "ch.qos.logback" % "logback-core"    % LOGBACK_VERSION,
+        "ch.qos.logback" % "logback-classic" % LOGBACK_VERSION,
+        "org.slf4j"      % "slf4j-api"       % SLF4J_VERSION
+      )
+    )
+  )
 
   //////////////////////////////////////////////////////////////////////////////
   // SHARED SETTINGS
@@ -83,11 +114,12 @@ object ServiceNetBuild extends Build {
     organization := ORGANIZATION,
     scalaVersion := SCALA_VERSION,
 
+    resolvers +=
+      "Mesosphere Repo" at "http://downloads.mesosphere.io/maven",
+
     libraryDependencies ++= Seq(
-      "com.typesafe"    % "config"            % TYPESAFE_CONFIG_VERSION,
-      "net.databinder" %% "unfiltered-filter" % UNFILTERED_VERSION,
-      "net.databinder" %% "unfiltered-jetty"  % UNFILTERED_VERSION,
-      "org.scalatest"  %% "scalatest"         % SCALATEST_VERSION % "test"
+      "com.typesafe"   % "config"    % TYPESAFE_CONFIG_VERSION,
+      "org.scalatest" %% "scalatest" % SCALATEST_VERSION % "test"
     ),
 
     scalacOptions in Compile ++= Seq(

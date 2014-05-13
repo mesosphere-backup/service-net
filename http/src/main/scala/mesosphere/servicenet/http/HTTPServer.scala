@@ -4,12 +4,21 @@ import unfiltered.jetty.Http
 import unfiltered.request._
 import unfiltered.response._
 
-object HTTPServer extends App {
+class HTTPServer {
 
-  val echo = unfiltered.filter.Planify {
-    case Path(Seg(p :: Nil)) => ResponseString(p)
+  def run(port: Int): Unit = {
+    object RestRoutes extends unfiltered.filter.Plan {
+      def intent = {
+        case Path(Seg(p :: Nil)) => ResponseString(p)
+      }
+    }
+
+    Http(port).filter(RestRoutes).run
   }
+}
 
-  Http.anylocal.filter(echo).run
-
+object HTTPServer extends App {
+  val server = new HTTPServer
+  val defaultPort = 9000
+  server.run(defaultPort) // TODO: get port from configuration
 }
