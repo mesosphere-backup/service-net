@@ -35,6 +35,7 @@ class NameServer extends Logging {
 
   type Resolver = PartialFunction[dns4s.Message, dns4s.dsl.ComposableMessage]
 
+  // See: http://www.dnsjava.org/doc/org/xbill/DNS/ResolverConfig.html
   protected val underlying: SimpleResolver = new SimpleResolver()
 
   def resolve: Resolver = {
@@ -57,9 +58,12 @@ class NameServer extends Logging {
   def delegate: Resolver = {
     case query @ Query(_) =>
       log debug s"Delegating query to host resolver: [$query]"
-      val buffer: dns4s.MessageBuffer = query.apply()
+      val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
-      toDns4s(underlying send msg)
+      log debug s"Sending query to upstream name server: [$msg]"
+      val response = underlying send msg
+      log debug s"Received response from upstream name server: [$response]"
+      toDns4s(response)
   }
 
   def resolveFromDoc(label: String, doc: Doc): Seq[servicenet.dsl.DNS] =
@@ -115,7 +119,7 @@ class NameServer extends Logging {
   }
 
   protected def toDns4s(msg: DNS.Message): dns4s.Message =
-    dns4s.Message(dns4s.MessageBuffer().put(msg.toWire))
+    dns4s.Message(dns4s.MessageBuffer().put(msg.toWire).flipped)
 
   /**
     * Returns a canonical `java.net.Inet6Address` for the supplied address
