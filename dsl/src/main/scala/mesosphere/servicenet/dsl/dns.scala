@@ -44,7 +44,7 @@ sealed trait DNS extends NetworkEntity {
   val recordClass: String = "IN" // Internet class records are the norm
   val ttl: Int = 3600 // 1 hour
   val data: Seq[String]
-  val records: Seq[(String, String, String, String, String)] =
+  lazy val records: Seq[(String, String, String, String, String)] =
     for (d <- data) yield (label, ttl.toString, recordClass, recordType, d)
   val name: String = label
 }
