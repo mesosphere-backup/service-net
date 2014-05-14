@@ -33,30 +33,34 @@ class NameServer extends Logging {
   implicit val timeout = Timeout(5.seconds)
   implicit val executionContext = system.dispatcher
 
-  type Resolver = PartialFunction[dns4s.Message, dns4s.dsl.ComposableMessage]
-
   // See: http://www.dnsjava.org/doc/org/xbill/DNS/ResolverConfig.html
   protected val underlying: SimpleResolver = new SimpleResolver()
 
-  def resolve: Resolver = {
-    case query @ Query(_) ~ Questions(QName(name) ~ TypeAAAA() :: Nil) =>
-      log debug s"Received 'AAAA' query for [$name]"
-      val answers: Seq[RR] = resolveFromDoc(name, network()).collect {
-        case r: AAAA => r.addresses.map { address: Inet6Address =>
-          RR(
-            `class` = RR.`classIN`,
-            name = r.label,
-            rdata = AAAAResource(address),
-            ttl = r.ttl,
-            `type` = RR.`typeAAAA`
-          )
-        }
-      }.flatten
-      Response ~ Questions(query.question: _*) ~ Answers(answers: _*)
-  }
+  def resolve(query: dns4s.Message): Option[dns4s.Message] =
+    query match {
+      case Query(_) ~ Questions(QName(name) ~ TypeAAAA() :: Nil) =>
+        log debug s"Received 'AAAA' query for [$name]"
+        val answers: Seq[RR] = resolveFromDoc(name, network()).collect {
+          case r: AAAA => r.addresses.map { address: Inet6Address =>
+            RR(
+              `class` = RR.`classIN`,
+              name = r.label,
+              rdata = AAAAResource(address),
+              ttl = r.ttl,
+              `type` = RR.`typeAAAA`
+            )
+          }
+        }.flatten
+        if (answers.nonEmpty)
+          Some(Response ~ Questions(query.question: _*) ~ Answers(answers: _*))
+        else
+          None
 
-  def delegate: Resolver = {
-    case query @ Query(_) =>
+      case _ => None
+    }
+
+  def delegate(query: dns4s.Message): Option[dns4s.Message] =
+    Try {
       log debug s"Delegating query to host resolver: [$query]"
       val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
@@ -64,7 +68,7 @@ class NameServer extends Logging {
       val response = underlying send msg
       log debug s"Received response from upstream name server: [$response]"
       toDns4s(response)
-  }
+    }.toOption
 
   def resolveFromDoc(label: String, doc: Doc): Seq[servicenet.dsl.DNS] =
     doc.dns.filter { _.label == label }
@@ -77,10 +81,14 @@ class NameServer extends Logging {
     // TODO: initialize an empty doc for this, handle calls to `update`
 
     val loopbackAddress = ipv6Address("0000 0000 0000 0000 0000 0000 0000 0001")
+    val anotherAddress = ipv6Address("FC75 0000 0000 0000 0000 9FB2 0000 0804")
 
     Doc(
       interfaces = Nil,
-      dns = Seq(AAAA("foo.bar", Seq(loopbackAddress))),
+      dns = Seq(
+        AAAA("foo.bar", Seq(loopbackAddress)),
+        AAAA("foo.bar", Seq(anotherAddress))
+      ),
       nat = Nil,
       tunnels = Nil
     )
@@ -99,7 +107,7 @@ class NameServer extends Logging {
   class NameServerActor extends Actor {
     override def receive = {
       case msg: dns4s.Message =>
-        (resolve orElse delegate).lift.apply(msg) match {
+        resolve(msg) orElse delegate(msg) match {
           case Some(answer) => sender ! answer
           case None         => log debug s"No result for $msg"
         }
