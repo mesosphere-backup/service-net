@@ -88,7 +88,7 @@ class NameServer extends Logging {
   def update(doc: Doc): Unit = update(network diff doc)
 
   /**
-    * Updates this name server with a changes to the underlying network.
+    * Updates this name server with changes to the underlying network.
     */
   def update(diff: Diff): Unit = ???
 
