@@ -33,6 +33,13 @@ class NameServer extends Logging {
   implicit val timeout = Timeout(5.seconds)
   implicit val executionContext = system.dispatcher
 
+  protected[this] var networkDoc: Doc = Doc(
+    interfaces = Nil,
+    dns = Nil,
+    nat = Nil,
+    tunnels = Nil
+  )
+
   // See: http://www.dnsjava.org/doc/org/xbill/DNS/ResolverConfig.html
   protected val underlying: SimpleResolver = new SimpleResolver()
 
@@ -70,39 +77,24 @@ class NameServer extends Logging {
       toDns4s(response)
     }.toOption
 
+  // TODO: this could be more efficient
   def resolveFromDoc(label: String, doc: Doc): Seq[servicenet.dsl.DNS] =
     doc.dns.filter { _.label == label }
 
   /**
     * A description of the underlying network topology.
     */
-  def network(): Doc = {
-
-    // TODO: initialize an empty doc for this, handle calls to `update`
-
-    val loopbackAddress = ipv6Address("0000 0000 0000 0000 0000 0000 0000 0001")
-    val anotherAddress = ipv6Address("FC75 0000 0000 0000 0000 9FB2 0000 0804")
-
-    Doc(
-      interfaces = Nil,
-      dns = Seq(
-        AAAA("foo.bar", Seq(loopbackAddress)),
-        AAAA("foo.bar", Seq(anotherAddress))
-      ),
-      nat = Nil,
-      tunnels = Nil
-    )
-  }
+  def network(): Doc = networkDoc
 
   /**
     * Updates this name server with a new description of the underlying network.
     */
-  def update(doc: Doc): Unit = update(network diff doc)
+  def update(doc: Doc): Unit = synchronized { networkDoc = doc }
 
   /**
     * Updates this name server with changes to the underlying network.
     */
-  def update(diff: Diff): Unit = ???
+  def update(diff: Diff): Unit = synchronized { update(diff(networkDoc)) }
 
   class NameServerActor extends Actor {
     override def receive = {
@@ -152,5 +144,25 @@ class NameServer extends Logging {
   */
 object NameServer extends App {
   val ns = new NameServer
+
+  val testDoc = {
+    val loopbackAddress =
+      ns.ipv6Address("0000 0000 0000 0000 0000 0000 0000 0001")
+
+    val anotherAddress =
+      ns.ipv6Address("FC75 0000 0000 0000 0000 9FB2 0000 0804")
+
+    Doc(
+      interfaces = Nil,
+      dns = Seq(
+        AAAA("foo.bar", Seq(loopbackAddress)),
+        AAAA("foo.bar", Seq(anotherAddress))
+      ),
+      nat = Nil,
+      tunnels = Nil
+    )
+  }
+
+  ns update testDoc
   ns.start(port = 8888) // TODO: get value for port from config
 }
