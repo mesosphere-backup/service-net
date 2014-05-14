@@ -23,7 +23,7 @@ import java.net.{ InetAddress, Inet6Address }
   *
   * See: http://www.ietf.org/rfc/rfc1035.txt
   *
-  * Serves A, AAAA and CNAME records present in the underlying
+  * Serves AAAA records present in the underlying
   * `mesosphere.servicenet.dsl.Doc`, and delegates to the host for all other
   * queries.
   */
