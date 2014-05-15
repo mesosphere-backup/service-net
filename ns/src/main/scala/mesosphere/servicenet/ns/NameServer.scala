@@ -2,7 +2,7 @@ package mesosphere.servicenet.ns
 
 import mesosphere.servicenet
 import mesosphere.servicenet.dsl.{ AAAA, Doc, Diff }
-import mesosphere.servicenet.util.Logging
+import mesosphere.servicenet.util.{ InetAddressHelper, Logging }
 import akka.actor._
 import akka.pattern.ask
 import akka.io.IO
@@ -121,22 +121,6 @@ class NameServer extends Logging {
   protected def toDns4s(msg: DNS.Message): dns4s.Message =
     dns4s.Message(dns4s.MessageBuffer().put(msg.toWire).flipped)
 
-  /**
-    * Returns a canonical `java.net.Inet6Address` for the supplied address
-    * string.
-    *
-    * @param addr An IPv6 Address (32 hexadecimal digits)
-    */
-  @throws[java.net.UnknownHostException]
-  def ipv6Address(addr: String): Inet6Address =
-    InetAddress.getByAddress(bytes(addr)).asInstanceOf[Inet6Address]
-
-  protected[this] val hexChars: Set[Char] =
-    (('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'z')).toSet
-
-  protected[this] def bytes(s: String): Array[Byte] =
-    s.filter(hexChars).sliding(2, 2).map(BigInt(_, 16).toByte).toArray
-
 }
 
 /**
@@ -147,10 +131,10 @@ object NameServer extends App {
 
   val testDoc = {
     val loopbackAddress =
-      ns.ipv6Address("0000 0000 0000 0000 0000 0000 0000 0001")
+      InetAddressHelper.ipv6("0000 0000 0000 0000 0000 0000 0000 0001")
 
     val anotherAddress =
-      ns.ipv6Address("FC75 0000 0000 0000 0000 9FB2 0000 0804")
+      InetAddressHelper.ipv6("fc75:0000:0000:0000:0000:9fb2:0000:0804")
 
     Doc(
       interfaces = Nil,
