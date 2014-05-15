@@ -1,10 +1,12 @@
 package mesosphere.servicenet.http
 
+import mesosphere.servicenet.http.json.DocProtocol
+import play.api.libs.json.Json
 import unfiltered.jetty.Http
 import unfiltered.request._
 import unfiltered.response._
 
-class HTTPServer {
+class HTTPServer extends DocProtocol {
 
   def run(port: Int): Unit = {
     object RestRoutes extends unfiltered.filter.Plan {
