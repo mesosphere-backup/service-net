@@ -13,6 +13,9 @@ class DocProtocolSpec extends Spec {
 
     val inet6Address =
       InetAddressHelper.ipv6("fc75:0000:0000:0000:0000:9fb2:0000:0804")
+
+    val inet6Subnet =
+      Inet6Subnet(addr = inet6Address, prefixBits = 64)
   }
 
   import DocProtocol._
@@ -39,7 +42,7 @@ class DocProtocolSpec extends Spec {
     }
   }
 
-  "DocProtocol" should "read and write Inet6Address" in {
+  it should "read and write Inet6Address" in {
     import Fixture._
 
     val json = Json.toJson(inet6Address)
@@ -59,7 +62,20 @@ class DocProtocolSpec extends Spec {
     intercept[JsResultException] {
       JsArray(Seq(JsString("one"), JsString("two"))).as[Inet6Address]
     }
+  }
 
+  it should "read and write Inet6ASubnet" in {
+    import Fixture._
+
+    val json = Json.toJson(inet6Subnet)
+
+    json should equal (Json.obj(
+      "addr" -> "fc75:0:0:0:0:9fb2:0:804",
+      "prefixBits" -> 64
+    ))
+
+    val readResult = json.as[Inet6Subnet]
+    readResult should equal (inet6Subnet)
   }
 
 }
