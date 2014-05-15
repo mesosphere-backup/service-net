@@ -13,27 +13,27 @@ case class AAAA(label: String, addresses: Seq[Inet6Address]) extends DNS {
   val data: Seq[String] = addresses.map(_.getHostAddress)
 }
 
-/**
-  * SRV record
-  */
-case class SRV(label: String, endpoints: Seq[SRVData] = Seq()) extends DNS {
-  val data: Seq[String] = for (srv <- endpoints) yield {
-    import srv._
-    s"$priority $weight $port $target"
-  }
-  /**
-    * Clients should never cache SRV records but TTL of 0 is not to be used.
-    *
-    * http://mark.lindsey.name/2009/03/never-use-dns-ttl-of-zero-0.html
-    */
-  override val ttl: Int = 1
-}
-
-case class SRVData(
-  target: String,
-  port: Int = 0,
-  weight: Int = 1,
-  priority: Int = 1)
+///**
+//  * SRV record
+//  */
+//case class SRV(label: String, endpoints: Seq[SRVData] = Seq()) extends DNS {
+//  val data: Seq[String] = for (srv <- endpoints) yield {
+//    import srv._
+//    s"$priority $weight $port $target"
+//  }
+//
+//  /**
+//    * Clients should never cache SRV records but TTL of 0 is not to be used.
+//    *
+//    * http://mark.lindsey.name/2009/03/never-use-dns-ttl-of-zero-0.html
+//    */
+//  override val ttl: Int = 1
+//}
+//
+//case class SRVData(target: String,
+//                   port: Int = 0,
+//                   weight: Int = 1,
+//                   priority: Int = 1)
 
 /**
   * See http://www.zytrax.com/books/dns/ch8/#generic
