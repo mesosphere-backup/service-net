@@ -27,6 +27,7 @@ object ServiceNetBuild extends Build {
   val AKKA_VERSION            = "2.3.2"
   val DISPATCH_VERSION        = "0.11.1"
   val DNS4S_VERSION           = "0.4-SNAPSHOT"
+  val DNSJAVA_VERSION         = "2.1.6"
   val LOGBACK_VERSION         = "1.1.2"
   val SLF4J_VERSION           = "1.7.6"
   val UNFILTERED_VERSION      = "0.7.1"
@@ -79,7 +80,8 @@ object ServiceNetBuild extends Build {
     settings = commonSettings ++ Seq(
       libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-actor" % AKKA_VERSION,
-        "com.github.mkroli" %% "dns4s-akka" % DNS4S_VERSION
+        "com.github.mkroli" %% "dns4s-akka" % DNS4S_VERSION,
+        "dnsjava"            % "dnsjava"    % DNSJAVA_VERSION
       )
     )
   ).dependsOn(dsl, util)
