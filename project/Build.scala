@@ -53,7 +53,7 @@ object ServiceNetBuild extends Build {
       ) ++
       assemblySettings ++
       graphSettings
-  ).dependsOn(dsl, http, ns, patch, util)
+  ).dependsOn(dsl, http, ns, patch, util % "test->test;compile->compile")
    .aggregate(dsl, http, ns, patch, util)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
@@ -62,7 +62,7 @@ object ServiceNetBuild extends Build {
     id = subproject("dsl"),
     base = file("dsl"),
     settings = commonSettings
-  ).dependsOn(util)
+  ).dependsOn(util % "test->test;compile->compile")
 
   lazy val http = Project(
     id = subproject("http"),
@@ -74,7 +74,7 @@ object ServiceNetBuild extends Build {
         "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION
       )
     )
-  ).dependsOn(dsl, util)
+  ).dependsOn(dsl, util % "test->test;compile->compile")
 
   lazy val ns = Project(
     id = subproject("ns"),
@@ -86,7 +86,7 @@ object ServiceNetBuild extends Build {
         "dnsjava"            % "dnsjava"    % DNSJAVA_VERSION
       )
     )
-  ).dependsOn(dsl, util)
+  ).dependsOn(dsl, util % "test->test;compile->compile")
 
   lazy val patch = Project(
     id = subproject("patch"),
