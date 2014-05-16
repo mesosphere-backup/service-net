@@ -121,39 +121,49 @@ trait DocProtocol {
   //   "op": "remove", "path": "interfaces", "value": "my-service"
   // }
 
-  // implicit val networkEntityFormat = new Format[NetworkEntity] {
-  //   def writes(entity: NetworkEntity): JsValue = ???
-  //   def reads(json: JsValue): JsResult[NetworkEntity] = ???
-  // }
+  case class Patch(
+    op: String,
+    path: String,
+    value: JsValue)
 
-  // case class Patch(
-  //   op: String,
-  //   path: String,
-  //   value: Change[NetworkEntity])
+  implicit val patchFormat = Json.format[Patch]
 
-  // implicit val patchFormat = Json.format[Patch]
+  implicit val diffFormat = new Format[Diff] {
+    def writes(diff: Diff): JsValue = {
+      val iPatches = diff.interfaces.map {
+        case Add(iface)    => Patch("add", "interfaces", Json.toJson(iface))
+        case Remove(label) => Patch("remove", "interfaces", JsString(label))
+      }
 
-  implicit val changeInterfaceFormat = new Format[Change[Interface]] {
-    def writes(change: Change[Interface]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[Interface]] = ???
+      val dPatches = diff.dns.map {
+        case Add(record)   => Patch("add", "dns", Json.toJson(record))
+        case Remove(label) => Patch("remove", "dns", JsString(label))
+      }
+
+      val nPatches = diff.nat.map {
+        case Add(nat)      => Patch("add", "nat", Json.toJson(nat))
+        case Remove(label) => Patch("remove", "nat", JsString(label))
+      }
+
+      val tPatches = diff.tunnels.map {
+        case Add(tunnel)   => Patch("add", "tunnels", Json.toJson(tunnel))
+        case Remove(label) => Patch("remove", "tunnels", JsString(label))
+      }
+
+      JsArray((iPatches ++ dPatches ++ nPatches ++ tPatches) map Json.toJson)
+    }
+
+    def reads(json: JsValue): JsResult[Diff] = {
+      json.validate[Seq[Patch]].map { patches: Seq[Patch] =>
+
+        val ifaces: Seq[Change[Interface]] =
+          patches.collect { case patch if patch.path == "interfaces" =>
+        }
+
+        Diff(ifaces, dns, nat, tunnels)
+      }
+    }
   }
-
-  implicit val changeDnsFormat = new Format[Change[DNS]] {
-    def writes(change: Change[DNS]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[DNS]] = ???
-  }
-
-  implicit val changeNatFormat = new Format[Change[NAT]] {
-    def writes(change: Change[NAT]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[NAT]] = ???
-  }
-
-  implicit val changeTunnelFormat = new Format[Change[Tunnel]] {
-    def writes(change: Change[Tunnel]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[Tunnel]] = ???
-  }
-
-  implicit val diffFormat = Json.format[Diff]
 
   // Doc
 
