@@ -20,7 +20,7 @@ trait DocProtocol {
       case JsString(addr) =>
         Try(InetAddressHelper.ipv4(addr)) match {
           case Success(ip)    => JsSuccess(ip)
-          case Failure(cause) => JsError("Malformed address.")
+          case Failure(cause) => JsError("Malformed address")
         }
       case _ => JsError("Address must be a string")
     }
@@ -32,13 +32,30 @@ trait DocProtocol {
       case JsString(addr) =>
         Try(InetAddressHelper.ipv6(addr)) match {
           case Success(ip)    => JsSuccess(ip)
-          case Failure(cause) => JsError("Malformed address.")
+          case Failure(cause) => JsError("Malformed address")
         }
       case _ => JsError("Address must be a string")
     }
   }
 
-  implicit val inet6SubnetFormat = Json.format[Inet6Subnet]
+  implicit val inet6SubnetFormat = new Format[Inet6Subnet] {
+    def writes(net: Inet6Subnet): JsValue = JsString(net.getCanonicalForm)
+    def reads(json: JsValue): JsResult[Inet6Subnet] = json match {
+      case JsString(s) => {
+        val components = s.split('/')
+        if (components.size != 2)
+          return JsError("Subnet must be of form: <addr>/<length>")
+        val Seq(addr, prefix): Seq[String] = components
+        Try(InetAddressHelper.ipv6(addr)) flatMap { addr =>
+          Try(Inet6Subnet(addr, prefix.toInt))
+        } match {
+          case Success(net)   => JsSuccess(net)
+          case Failure(cause) => JsError("Malformed subnet")
+        }
+      }
+      case _ => JsError("Address must be a string")
+    }
+  }
 
   // Interface
 
@@ -51,8 +68,9 @@ trait DocProtocol {
         }
       def reads(json: JsValue): JsResult[Either[Inet6Address, Inet6Subnet]] =
         json match {
-          case _: JsString => inet6AddressFormat.reads(json).map(Left(_))
-          case _           => inet6SubnetFormat.reads(json).map(Right(_))
+          case _: JsString =>
+            inet6AddressFormat.reads(json).map(Left(_)) orElse
+              inet6SubnetFormat.reads(json).map(Right(_))
         }
     }
 

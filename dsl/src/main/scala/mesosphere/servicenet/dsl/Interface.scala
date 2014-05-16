@@ -13,10 +13,3 @@ import java.net.Inet6Address
 case class Interface(name: String,
                      addr: Either[Inet6Address, Inet6Subnet])
     extends NetworkEntity
-
-object Interface {
-  def apply(name: String, addr: Inet6Address): Interface =
-    Interface(name, Left(addr))
-  def apply(name: String, addr: Inet6Subnet): Interface =
-    Interface(name, Right(addr))
-}

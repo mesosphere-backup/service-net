@@ -26,7 +26,7 @@ class DocProtocolSpec extends Spec {
 
     val nat = NAT(
       name = "my-nat",
-      service = inet6Subnet,
+      subnet = inet6Subnet,
       instances = Seq(inet6Address, inet6Address)
     )
 
@@ -94,10 +94,7 @@ class DocProtocolSpec extends Spec {
   it should "read and write Inet6ASubnet" in {
     import Fixture._
     val json = Json.toJson(inet6Subnet)
-    json should equal (Json.obj(
-      "addr" -> "fc75:0:0:0:0:9fb2:0:804",
-      "prefixBits" -> 64
-    ))
+    json should equal (JsString("fc75:0:0:0:0:9fb2:0:804/64"))
 
     val readResult = json.as[Inet6Subnet]
     readResult should equal (inet6Subnet)
@@ -132,7 +129,7 @@ class DocProtocolSpec extends Spec {
     val json = Json.toJson(nat)
     json should equal (Json.obj(
       "name" -> "my-nat",
-      "service" -> Json.toJson(inet6Subnet),
+      "subnet" -> Json.toJson(inet6Subnet),
       "instances" -> Json.toJson(Seq(inet6Address, inet6Address))
     ))
 
