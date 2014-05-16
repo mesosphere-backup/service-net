@@ -71,6 +71,7 @@ trait DocProtocol {
           case _: JsString =>
             inet6AddressFormat.reads(json).map(Left(_)) orElse
               inet6SubnetFormat.reads(json).map(Right(_))
+          case _ => JsError("Address or subnet must be a string")
         }
     }
 
