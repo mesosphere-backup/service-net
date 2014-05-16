@@ -37,6 +37,14 @@ class DocProtocolSpec extends Spec {
       addr = inet6Address,
       remoteIPv6Net = inet6Subnet
     )
+
+    val doc = Doc(
+      interfaces = Seq(interface),
+      dns = Seq(aaaa),
+      nat = Seq(nat),
+      tunnels = Seq(tunnel)
+    )
+
   }
 
   import DocProtocol._
@@ -145,6 +153,20 @@ class DocProtocolSpec extends Spec {
 
     val readResult = json.as[Tunnel]
     readResult should equal (tunnel)
+  }
+
+  it should "read and write Doc" in {
+    import Fixture._
+    val json = Json.toJson(doc)
+    json should equal (Json.obj(
+      "interfaces" -> Json.toJson(Seq(interface)),
+      "dns" -> Json.toJson(Seq(aaaa)),
+      "nat" -> Json.toJson(Seq(nat)),
+      "tunnels" -> Json.toJson(Seq(tunnel))
+    ))
+
+    val readResult = json.as[Doc]
+    readResult should equal (doc)
   }
 
 }
