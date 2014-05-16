@@ -16,13 +16,22 @@ class DocProtocolSpec extends Spec {
 
     val inet6Subnet =
       Inet6Subnet(addr = inet6Address, prefixBits = 64)
+
+    val interface = Interface(name = "my-service", addr = inet6Address)
+
+    val tunnel = Tunnel6in4(
+      name = "my-tunnel",
+      localEnd = inet4Address,
+      remoteEnd = inet4Address,
+      addr = inet6Address,
+      remoteIPv6Net = inet6Subnet
+    )
   }
 
   import DocProtocol._
 
   "DocProtocol" should "read and write Inet4Address" in {
     import Fixture._
-
     val json = Json.toJson(inet4Address)
     json should equal (JsString("192.168.1.115"))
 
@@ -44,7 +53,6 @@ class DocProtocolSpec extends Spec {
 
   it should "read and write Inet6Address" in {
     import Fixture._
-
     val json = Json.toJson(inet6Address)
     json should equal (JsString("fc75:0:0:0:0:9fb2:0:804"))
 
@@ -66,9 +74,7 @@ class DocProtocolSpec extends Spec {
 
   it should "read and write Inet6ASubnet" in {
     import Fixture._
-
     val json = Json.toJson(inet6Subnet)
-
     json should equal (Json.obj(
       "addr" -> "fc75:0:0:0:0:9fb2:0:804",
       "prefixBits" -> 64
@@ -76,6 +82,33 @@ class DocProtocolSpec extends Spec {
 
     val readResult = json.as[Inet6Subnet]
     readResult should equal (inet6Subnet)
+  }
+
+  it should "read and write Interface" in {
+    import Fixture._
+    val json = Json.toJson(interface)
+    json should equal (Json.obj(
+      "name" -> "my-service",
+      "addr" -> inet6Address
+    ))
+
+    val readResult = json.as[Interface]
+    readResult should equal (interface)
+  }
+
+  it should "read and write Tunnel" in {
+    import Fixture._
+    val json = Json.toJson(tunnel)
+    json should equal (Json.obj(
+      "name" -> "my-tunnel",
+      "localEnd" -> Json.toJson(inet4Address),
+      "remoteEnd" -> Json.toJson(inet4Address),
+      "addr" -> Json.toJson(inet6Address),
+      "remoteIPv6Net" -> Json.toJson(inet6Subnet)
+    ))
+
+    val readResult = json.as[Tunnel]
+    readResult should equal (tunnel)
   }
 
 }
