@@ -13,6 +13,7 @@ class HTTPServer(updated: Doc => Unit = (doc: Doc) => ()) extends DocProtocol {
 
   def update(docPrime: Doc) = synchronized {
     doc = docPrime
+    updated(doc)
   }
 
   object RestRoutes extends unfiltered.filter.Plan {
