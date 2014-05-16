@@ -21,10 +21,9 @@ sealed trait Tunnel extends NetworkEntity {
   * @param remoteIPv6Net The remote IPv6 network to which we're tunneling
   *                      traffic
   */
-case class Tunnel6in4(
-  name: String,
-  localEnd: Inet4Address,
-  remoteEnd: Inet4Address,
-  addr: Inet6Address,
-  remoteIPv6Net: Inet6Subnet) extends Tunnel
+case class Tunnel6in4(name: String,
+                      localEnd: Inet4Address,
+                      remoteEnd: Inet4Address,
+                      addr: Inet6Address,
+                      remoteIPv6Net: Inet6Subnet) extends Tunnel
 
