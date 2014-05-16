@@ -19,6 +19,11 @@ class DocProtocolSpec extends Spec {
 
     val interface = Interface(name = "my-service", addr = inet6Address)
 
+    val aaaa = AAAA(
+      label = "foo.bar",
+      addresses = Seq(inet6Address)
+    )
+
     val nat = NAT(
       name = "my-nat",
       service = inet6Subnet,
@@ -100,6 +105,18 @@ class DocProtocolSpec extends Spec {
 
     val readResult = json.as[Interface]
     readResult should equal (interface)
+  }
+
+  it should "read and write DNS" in {
+    import Fixture._
+    val json = Json.toJson(aaaa)
+    json should equal (Json.obj(
+      "label" -> "foo.bar",
+      "addresses" -> Json.toJson(Seq(inet6Address))
+    ))
+
+    val readResult = json.as[DNS]
+    readResult should equal (aaaa)
   }
 
   it should "read and write NAT" in {

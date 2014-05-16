@@ -60,9 +60,14 @@ trait DocProtocol {
 
   // DNS
 
+  val aaaaFormat = Json.format[AAAA]
+
   implicit val dnsFormat = new Format[DNS] {
-    def writes(dns: DNS): JsValue = ???
-    def reads(json: JsValue): JsResult[DNS] = ???
+    def writes(dns: DNS): JsValue = dns match {
+      case aaaa: AAAA => aaaaFormat.writes(aaaa)
+    }
+    def reads(json: JsValue): JsResult[DNS] =
+      aaaaFormat.reads(json)
   }
 
   // NAT
