@@ -88,6 +88,32 @@ trait DocProtocol {
 
   // Add, Remove, Change, Diff
 
+  // See: http://tools.ietf.org/html/rfc6902
+  //
+  // For example:
+  //
+  // {
+  //   "op": "add",
+  //   "path": "interfaces",
+  //   "value": { "label": "my-service", "addr": "fc75:0:0:0:0:9fb2:0:804" }
+  // }
+  //
+  // {
+  //   "op": "remove", "path": "interfaces", "value": "my-service"
+  // }
+
+  // implicit val networkEntityFormat = new Format[NetworkEntity] {
+  //   def writes(entity: NetworkEntity): JsValue = ???
+  //   def reads(json: JsValue): JsResult[NetworkEntity] = ???
+  // }
+
+  // case class Patch(
+  //   op: String,
+  //   path: String,
+  //   value: Change[NetworkEntity])
+
+  // implicit val patchFormat = Json.format[Patch]
+
   implicit val changeInterfaceFormat = new Format[Change[Interface]] {
     def writes(change: Change[Interface]): JsValue = ???
     def reads(json: JsValue): JsResult[Change[Interface]] = ???
