@@ -7,6 +7,9 @@ import play.api.libs.functional.syntax._
 import scala.util.{ Try, Success, Failure }
 import java.net.{ InetAddress, Inet4Address, Inet6Address }
 
+/**
+  * Custom JSON (de)serializer logic for Service Net DSL types.
+  */
 trait DocProtocol {
 
   // InetAddress, Inet4Address, Inet6Address, Inet6Subnet
@@ -64,10 +67,7 @@ trait DocProtocol {
 
   // NAT
 
-  implicit val natFormat = new Format[NAT] {
-    def writes(nat: NAT): JsValue = ???
-    def reads(json: JsValue): JsResult[NAT] = ???
-  }
+  implicit val natFormat = Json.format[NAT]
 
   // Tunnel
 
@@ -111,4 +111,7 @@ trait DocProtocol {
 
 }
 
+/**
+  * Custom JSON (de)serializer logic for Service Net DSL types.
+  */
 object DocProtocol extends DocProtocol

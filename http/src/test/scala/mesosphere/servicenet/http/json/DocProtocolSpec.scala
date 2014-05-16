@@ -19,6 +19,12 @@ class DocProtocolSpec extends Spec {
 
     val interface = Interface(name = "my-service", addr = inet6Address)
 
+    val nat = NAT(
+      name = "my-nat",
+      service = inet6Subnet,
+      instances = Seq(inet6Address, inet6Address)
+    )
+
     val tunnel = Tunnel6in4(
       name = "my-tunnel",
       localEnd = inet4Address,
@@ -94,6 +100,19 @@ class DocProtocolSpec extends Spec {
 
     val readResult = json.as[Interface]
     readResult should equal (interface)
+  }
+
+  it should "read and write NAT" in {
+    import Fixture._
+    val json = Json.toJson(nat)
+    json should equal (Json.obj(
+      "name" -> "my-nat",
+      "service" -> Json.toJson(inet6Subnet),
+      "instances" -> Json.toJson(Seq(inet6Address, inet6Address))
+    ))
+
+    val readResult = json.as[NAT]
+    readResult should equal (nat)
   }
 
   it should "read and write Tunnel" in {
