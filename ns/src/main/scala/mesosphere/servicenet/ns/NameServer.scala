@@ -106,7 +106,7 @@ class NameServer extends Logging {
     }
   }
 
-  def start(port: Int): Unit = {
+  def run(port: Int): Unit = {
     val nsHandler = system actorOf Props(new NameServerActor)
     IO(Dns) ? Dns.Bind(nsHandler, port) onComplete {
       case Success(bound) => log.info(s"Bound port [$port]")
@@ -148,5 +148,5 @@ object NameServer extends App {
   }
 
   ns update testDoc
-  ns.start(port = 8888) // TODO: get value for port from config
+  ns.run(port = 8888) // TODO: get value for port from config
 }

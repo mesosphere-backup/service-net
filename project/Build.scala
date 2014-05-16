@@ -47,16 +47,22 @@ object ServiceNetBuild extends Build {
       Seq(
         aggregate in update := false,
         mainClass in (Compile, packageBin) :=
-          Some("mesosphere.servicenet.http.HTTPServer"),
+          Some("mesosphere.servicenet.daemon.ServiceNet"),
         mainClass in (Compile, run) :=
-          Some("mesosphere.servicenet.http.HTTPServer")
+          Some("mesosphere.servicenet.daemon.ServiceNet")
       ) ++
       assemblySettings ++
       graphSettings
-  ).dependsOn(dsl, http, ns, patch, util % "test->test;compile->compile")
-   .aggregate(dsl, http, ns, patch, util)
+  ).dependsOn(daemon, dsl, http, ns, patch, util)
+   .aggregate(daemon, dsl, http, ns, patch, util)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
+
+  lazy val daemon = Project(
+    id = subproject("daemon"),
+    base = file("daemon"),
+    settings = commonSettings
+  ).dependsOn(http, ns, patch)
 
   lazy val dsl = Project(
     id = subproject("dsl"),
