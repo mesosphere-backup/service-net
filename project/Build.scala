@@ -29,6 +29,7 @@ object ServiceNetBuild extends Build {
   val DNS4S_VERSION           = "0.4-SNAPSHOT"
   val DNSJAVA_VERSION         = "2.1.6"
   val LOGBACK_VERSION         = "1.1.2"
+  val PLAY_JSON_VERSION       = "2.2.3"
   val SLF4J_VERSION           = "1.7.6"
   val UNFILTERED_VERSION      = "0.7.1"
   val TYPESAFE_CONFIG_VERSION = "1.2.0"
@@ -68,8 +69,9 @@ object ServiceNetBuild extends Build {
     base = file("http"),
     settings = commonSettings ++ Seq(
       libraryDependencies ++= Seq(
-        "net.databinder" %% "unfiltered-filter" % UNFILTERED_VERSION,
-        "net.databinder" %% "unfiltered-jetty"  % UNFILTERED_VERSION
+        "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
+        "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
+        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION
       )
     )
   ).dependsOn(dsl, util % "test->test;compile->compile")
@@ -104,6 +106,7 @@ object ServiceNetBuild extends Build {
     )
   )
 
+
   //////////////////////////////////////////////////////////////////////////////
   // SHARED SETTINGS
   //////////////////////////////////////////////////////////////////////////////
@@ -116,8 +119,10 @@ object ServiceNetBuild extends Build {
     organization := ORGANIZATION,
     scalaVersion := SCALA_VERSION,
 
-    resolvers +=
-      "Mesosphere Repo" at "http://downloads.mesosphere.io/maven",
+    resolvers ++= Seq(
+      "Mesosphere Repo"     at "http://downloads.mesosphere.io/maven",
+      "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+    ),
 
     libraryDependencies ++= Seq(
       "com.typesafe"   % "config"    % TYPESAFE_CONFIG_VERSION,
