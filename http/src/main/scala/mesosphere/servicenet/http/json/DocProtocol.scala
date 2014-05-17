@@ -75,7 +75,10 @@ trait DocProtocol {
         }
     }
 
-  implicit val interfaceFormat = Json.format[Interface]
+  implicit val interfaceFormat: Format[Interface] = (
+    (__ \ "name").format[String] and
+    (__ \ "addr").format[Either[Inet6Address, Inet6Subnet]]
+  )(Interface.apply(_, _), unlift(Interface.unapply))
 
   // DNS
 
@@ -153,19 +156,12 @@ trait DocProtocol {
     def reads(json: JsValue): JsResult[Change[Tunnel]] = ???
   }
 
-  implicit val diffWrites: Writes[Diff] = (
-    (__ \ "interfaces").write[Seq[Change[Interface]]] and
-    (__ \ "dns").write[Seq[Change[DNS]]] and
-    (__ \ "nat").write[Seq[Change[NAT]]] and
-    (__ \ "tunnels").write[Seq[Change[Tunnel]]]
-  )(unapply(Diff.unapply))
-
-  implicit val diffReads: Reads[Diff] = (
-    (__ \ "interfaces").read[Seq[Change[Interface]]] and
-    (__ \ "dns").read[Seq[Change[DNS]]] and
-    (__ \ "nat").read[Seq[Change[NAT]]] and
-    (__ \ "tunnels").read[Seq[Change[Tunnel]]]
-  )(Diff.apply(_, _, _, _))
+  implicit val diffFormat: Format[Diff] = (
+    (__ \ "interfaces").format[Seq[Change[Interface]]] and
+    (__ \ "dns").format[Seq[Change[DNS]]] and
+    (__ \ "nat").format[Seq[Change[NAT]]] and
+    (__ \ "tunnels").format[Seq[Change[Tunnel]]]
+  )(Diff.apply(_, _, _, _), unlift(Diff.unapply))
 
   // Doc
 
