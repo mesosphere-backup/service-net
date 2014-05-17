@@ -17,7 +17,7 @@ class DocProtocolSpec extends Spec {
     val inet6Subnet =
       Inet6Subnet(addr = inet6Address, prefixBits = 64)
 
-    val interface = Interface(name = "my-service", addr = inet6Address)
+    val interface = Interface(name = "my-service", addrs = Seq(inet6Address))
 
     val aaaa = AAAA(
       label = "foo.bar",
@@ -105,7 +105,7 @@ class DocProtocolSpec extends Spec {
     val json = Json.toJson(interface)
     json should equal (Json.obj(
       "name" -> "my-service",
-      "addr" -> inet6Address
+      "addrs" -> Json.arr(inet6Address)
     ))
 
     val readResult = json.as[Interface]

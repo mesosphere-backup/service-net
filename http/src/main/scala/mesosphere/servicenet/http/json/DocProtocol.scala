@@ -59,25 +59,9 @@ trait DocProtocol {
 
   // Interface
 
-  implicit val addressOrSubnetFormat =
-    new Format[Either[Inet6Address, Inet6Subnet]] {
-      def writes(v: Either[Inet6Address, Inet6Subnet]): JsValue =
-        v match {
-          case Left(addr)    => inet6AddressFormat writes addr
-          case Right(subnet) => inet6SubnetFormat writes subnet
-        }
-      def reads(json: JsValue): JsResult[Either[Inet6Address, Inet6Subnet]] =
-        json match {
-          case _: JsString =>
-            inet6AddressFormat.reads(json).map(Left(_)) orElse
-              inet6SubnetFormat.reads(json).map(Right(_))
-          case _ => JsError("Address or subnet must be a string")
-        }
-    }
-
   implicit val interfaceFormat: Format[Interface] = (
     (__ \ "name").format[String] and
-    (__ \ "addr").format[Either[Inet6Address, Inet6Subnet]]
+    (__ \ "addrs").format[Seq[Inet6Address]]
   )(Interface.apply(_, _), unlift(Interface.unapply))
 
   // DNS
