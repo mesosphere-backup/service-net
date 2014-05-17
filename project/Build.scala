@@ -98,7 +98,7 @@ object ServiceNetBuild extends Build {
     id = subproject("patch"),
     base = file("patch"),
     settings = commonSettings
-  ).dependsOn(dsl)
+  ).dependsOn(dsl, util)
 
   lazy val util = Project(
     id = subproject("util"),

@@ -153,7 +153,19 @@ trait DocProtocol {
     def reads(json: JsValue): JsResult[Change[Tunnel]] = ???
   }
 
-  implicit val diffFormat = Json.format[Diff]
+  implicit val diffWrites: Writes[Diff] = (
+    (__ \ "interfaces").write[Seq[Change[Interface]]] and
+    (__ \ "dns").write[Seq[Change[DNS]]] and
+    (__ \ "nat").write[Seq[Change[NAT]]] and
+    (__ \ "tunnels").write[Seq[Change[Tunnel]]]
+  )(unapply(Diff.unapply))
+
+  implicit val diffReads: Reads[Diff] = (
+    (__ \ "interfaces").read[Seq[Change[Interface]]] and
+    (__ \ "dns").read[Seq[Change[DNS]]] and
+    (__ \ "nat").read[Seq[Change[NAT]]] and
+    (__ \ "tunnels").read[Seq[Change[Tunnel]]]
+  )(Diff.apply(_, _, _, _))
 
   // Doc
 
