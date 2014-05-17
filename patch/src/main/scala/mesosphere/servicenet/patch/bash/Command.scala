@@ -22,10 +22,10 @@ object Command {
 
   case class NAT(change: dsl.Change[dsl.NAT]) extends Command {
     val command = change match {
-      case dsl.Remove(name) => Seq("rm", "nat-fan", name)
+      case dsl.Remove(name) => Seq("rm", "natfan", name)
       case dsl.Add(item) => {
         import item._
-        Seq("nat-fan", name, subnet.getCanonicalForm) ++
+        Seq("natfan", name, subnet.getCanonicalForm) ++
           instances.map(_.getHostAddress)
       }
     }
