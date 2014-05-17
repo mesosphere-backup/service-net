@@ -8,16 +8,12 @@ import java.net.Inet6Address
   * interface, as well as creating the interface with the given IP.
   *
   * @param name interface device name
-  * @param addr an IPv6 IP or subnet
+  * @param addrs IPv6 IPs to assign to this interface
   */
-case class Interface(name: String,
-                     addr: Either[Inet6Address, Inet6Subnet])
-    extends NetworkEntity
+case class Interface(name: String, addrs: Seq[Inet6Address])
+  extends NetworkEntity
 
 object Interface {
   def apply(name: String, addr: Inet6Address): Interface =
-    Interface(name, Left(addr))
-
-  def apply(name: String, net: Inet6Subnet): Interface =
-    Interface(name, Right(net))
+    Interface(name, Seq(addr))
 }

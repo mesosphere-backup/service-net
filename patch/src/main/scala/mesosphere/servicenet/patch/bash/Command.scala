@@ -12,10 +12,8 @@ object Command {
   case class Interface(change: dsl.Change[dsl.Interface]) extends Command {
     val command = change match {
       case dsl.Remove(name) => Seq("rm", "dummy", name)
-      case dsl.Add(item) => item.addr match {
-        case Right(net) => Seq("dummy", item.name, net.getCanonicalForm)
-        case Left(ip)   => Seq("dummy", item.name, ip.getHostAddress)
-      }
+      case dsl.Add(item) =>
+        Seq("dummy", item.name) ++ item.addrs.map(_.getHostAddress)
     }
   }
 
