@@ -21,11 +21,13 @@ object Command {
     Interface(change)
 
   case class NATFan(change: dsl.Change[dsl.NATFan]) extends Command {
+    val mark = "0x12345678" // Hopefully no one else chooses this one.
     val command = change match {
       case dsl.Remove(name) => Seq("remove", "natfan", name)
       case dsl.Add(item) => {
         import item._
-        Seq("natfan", name) ++ (service +: instances).map(_.getHostAddress)
+        Seq("natfan", name, service.getHostAddress, mark) ++
+          instances.map(_.getHostAddress)
       }
     }
   }
