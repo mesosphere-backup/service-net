@@ -8,9 +8,9 @@ import java.net.Inet6Address
   * This part of the DSL might be too low-level or it might be too high level.
   *
   * @param name name of IP Tables rule that will be created
-  * @param subnet subnet to use for load-balancing (first IP is skipped)
+  * @param service service IP
   * @param instances hosts to which traffic should ultimately be NATed
   */
-case class NAT(name: String,
-               subnet: Inet6Subnet,
-               instances: Seq[Inet6Address]) extends NetworkEntity
+case class NATFan(name: String,
+                  service: Inet6Address,
+                  instances: Seq[Inet6Address]) extends NetworkEntity

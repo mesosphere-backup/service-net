@@ -20,18 +20,17 @@ object Command {
   implicit def interface2cmd(change: dsl.Change[dsl.Interface]): Interface =
     Interface(change)
 
-  case class NAT(change: dsl.Change[dsl.NAT]) extends Command {
+  case class NATFan(change: dsl.Change[dsl.NATFan]) extends Command {
     val command = change match {
       case dsl.Remove(name) => Seq("remove", "natfan", name)
       case dsl.Add(item) => {
         import item._
-        Seq("natfan", name, subnet.getCanonicalForm) ++
-          instances.map(_.getHostAddress)
+        Seq("natfan", name) ++ (service +: instances).map(_.getHostAddress)
       }
     }
   }
 
-  implicit def nat2cmd(change: dsl.Change[dsl.NAT]): NAT = NAT(change)
+  implicit def nat2cmd(change: dsl.Change[dsl.NATFan]): NATFan = NATFan(change)
 
   case class Tunnel(change: dsl.Change[dsl.Tunnel]) extends Command {
     val command = change match {

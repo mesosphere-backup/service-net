@@ -78,7 +78,7 @@ trait DocProtocol {
 
   // NAT
 
-  implicit val natFormat = Json.format[NAT]
+  implicit val natFormat = Json.format[NATFan]
 
   // Tunnel
 
@@ -130,9 +130,9 @@ trait DocProtocol {
     def reads(json: JsValue): JsResult[Change[DNS]] = ???
   }
 
-  implicit val changeNatFormat = new Format[Change[NAT]] {
-    def writes(change: Change[NAT]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[NAT]] = ???
+  implicit val changeNatFormat = new Format[Change[NATFan]] {
+    def writes(change: Change[NATFan]): JsValue = ???
+    def reads(json: JsValue): JsResult[Change[NATFan]] = ???
   }
 
   implicit val changeTunnelFormat = new Format[Change[Tunnel]] {
@@ -143,7 +143,7 @@ trait DocProtocol {
   implicit val diffFormat: Format[Diff] = (
     (__ \ "interfaces").format[Seq[Change[Interface]]] and
     (__ \ "dns").format[Seq[Change[DNS]]] and
-    (__ \ "nat").format[Seq[Change[NAT]]] and
+    (__ \ "nat").format[Seq[Change[NATFan]]] and
     (__ \ "tunnels").format[Seq[Change[Tunnel]]]
   )(Diff.apply(_, _, _, _), unlift(Diff.unapply))
 

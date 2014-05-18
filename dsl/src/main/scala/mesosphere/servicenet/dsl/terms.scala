@@ -18,7 +18,7 @@ package mesosphere.servicenet.dsl
   */
 case class Doc(interfaces: Seq[Interface] = Nil,
                dns: Seq[DNS] = Nil,
-               nat: Seq[NAT] = Nil,
+               nat: Seq[NATFan] = Nil,
                tunnels: Seq[Tunnel] = Nil)
 
 /**
@@ -39,7 +39,7 @@ trait NetworkEntity {
   */
 case class Diff(interfaces: Seq[Change[Interface]] = Nil,
                 dns: Seq[Change[DNS]] = Nil,
-                nat: Seq[Change[NAT]] = Nil,
+                nat: Seq[Change[NATFan]] = Nil,
                 tunnels: Seq[Change[Tunnel]] = Nil) extends ((Doc) => Doc) {
   def apply(original: Doc): Doc = Doc(
     interfaces = Diff.patch(interfaces, original.interfaces),
