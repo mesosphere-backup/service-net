@@ -10,7 +10,8 @@ import mesosphere.servicenet.patch.bash.Command._ // For implicits
 /**
   * The
   */
-case class Interpreter() extends dsl.Interpreter with Logging {
+case class Interpreter(dryRun: Boolean = false)
+    extends dsl.Interpreter with Logging {
   lazy val script: Array[Byte] =
     IO.read(getClass.getClassLoader.getResourceAsStream("patch.bash"))
 
@@ -28,9 +29,10 @@ case class Interpreter() extends dsl.Interpreter with Logging {
     try {
       IO.overwrite(tmp, script)
       val path = tmp.getAbsolutePath
-      for (command <- commands) {
+      val preamble = if (dryRun) Seq(path, "--dry-run") else Seq(path)
+      for (command <- commands.map(preamble ++ _)) {
         log debug s"call // ${command.mkString(" ")}"
-        val exitCode = Process(path +: command).!
+        val exitCode = Process(command).!
         val msg = s"exit $exitCode // ${command.mkString(" ")}"
         if (exitCode == 0) log debug msg else log warn msg
       }
