@@ -1,6 +1,6 @@
 package mesosphere.servicenet.patch.bash
 
-import java.io.{ FileOutputStream, File }
+import java.io.File
 import scala.sys.process._
 
 import mesosphere.servicenet.dsl
@@ -23,6 +23,7 @@ case class Interpreter(dryRun: Boolean = false)
 
   def runCommands(commands: Seq[Seq[String]]) {
     val tmp: File = File.createTempFile("servicenet-patch.", ".bash")
+    log debug s"Extracting script to: ${tmp.getAbsolutePath}"
     tmp.deleteOnExit()
     tmp.setWritable(true)
     tmp.setExecutable(true)
@@ -32,9 +33,12 @@ case class Interpreter(dryRun: Boolean = false)
       val preamble = if (dryRun) Seq(path, "--dry-run") else Seq(path)
       for (command <- commands.map(preamble ++ _)) {
         log debug s"call // ${command.mkString(" ")}"
-        val exitCode = Process(command).!
-        val msg = s"exit $exitCode // ${command.mkString(" ")}"
-        if (exitCode == 0) log debug msg else log warn msg
+        val exit = Process(command) ! ProcessLogger(
+          s => log info s"stdout // $s",
+          s => log info s"stderr // $s"
+        )
+        val msg = s"exit $exit // ${command.mkString(" ")}"
+        if (exit == 0) log debug msg else log warn msg
       }
     }
     finally {
