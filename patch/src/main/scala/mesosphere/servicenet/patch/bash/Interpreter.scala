@@ -16,7 +16,7 @@ case class Interpreter() extends dsl.Interpreter with Logging {
 
   def interpret(diff: dsl.Diff) = runCommands(
     diff.interfaces.map(_.command) ++
-      diff.nat.map(_.command) ++
+      diff.natFans.map(_.command) ++
       diff.tunnels.map(_.command)
   )
 

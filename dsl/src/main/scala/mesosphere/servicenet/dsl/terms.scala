@@ -11,14 +11,14 @@ package mesosphere.servicenet.dsl
   *
   * @param interfaces virtual interfaces in the service network
   * @param dns DNS entries that point to things in the service net
-  * @param nat map a service IP to its backends using NAT
+  * @param natFans map a service IP to its backends using NAT
   * @param tunnels we sometimes need to tunnel traffic from one host to another
   *                to connect the service network (for example, tunneling IPv6
   *                over IPv4)
   */
 case class Doc(interfaces: Seq[Interface] = Nil,
                dns: Seq[DNS] = Nil,
-               nat: Seq[NATFan] = Nil,
+               natFans: Seq[NATFan] = Nil,
                tunnels: Seq[Tunnel] = Nil)
 
 /**
@@ -39,12 +39,12 @@ trait NetworkEntity {
   */
 case class Diff(interfaces: Seq[Change[Interface]] = Nil,
                 dns: Seq[Change[DNS]] = Nil,
-                nat: Seq[Change[NATFan]] = Nil,
+                natFans: Seq[Change[NATFan]] = Nil,
                 tunnels: Seq[Change[Tunnel]] = Nil) extends ((Doc) => Doc) {
   def apply(original: Doc): Doc = Doc(
     interfaces = Diff.patch(interfaces, original.interfaces),
     dns = Diff.patch(dns, original.dns),
-    nat = Diff.patch(nat, original.nat),
+    natFans = Diff.patch(natFans, original.natFans),
     tunnels = Diff.patch(tunnels, original.tunnels)
   )
 }
@@ -53,7 +53,7 @@ object Diff {
   def apply(a: Doc, b: Doc): Diff = Diff(
     interfaces = Diff.diff(a.interfaces, b.interfaces),
     dns = Diff.diff(a.dns, b.dns),
-    nat = Diff.diff(a.nat, b.nat),
+    natFans = Diff.diff(a.natFans, b.natFans),
     tunnels = Diff.diff(a.tunnels, b.tunnels)
   )
 

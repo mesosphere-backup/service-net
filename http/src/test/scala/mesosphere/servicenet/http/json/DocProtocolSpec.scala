@@ -24,7 +24,7 @@ class DocProtocolSpec extends Spec {
       addresses = Seq(inet6Address)
     )
 
-    val nat = NATFan(
+    val natFan = NATFan(
       name = "my-nat",
       service = inet6Address,
       instances = Seq(inet6Address, inet6Address)
@@ -41,7 +41,7 @@ class DocProtocolSpec extends Spec {
     val doc = Doc(
       interfaces = Seq(interface),
       dns = Seq(aaaa),
-      nat = Seq(nat),
+      natFans = Seq(natFan),
       tunnels = Seq(tunnel)
     )
 
@@ -126,7 +126,7 @@ class DocProtocolSpec extends Spec {
 
   it should "read and write NATFan" in {
     import Fixture._
-    val json = Json.toJson(nat)
+    val json = Json.toJson(natFan)
     json should equal (Json.obj(
       "name" -> "my-nat",
       "service" -> Json.toJson(inet6Address),
@@ -134,7 +134,7 @@ class DocProtocolSpec extends Spec {
     ))
 
     val readResult = json.as[NATFan]
-    readResult should equal (nat)
+    readResult should equal (natFan)
   }
 
   it should "read and write Tunnel" in {
@@ -158,7 +158,7 @@ class DocProtocolSpec extends Spec {
     json should equal (Json.obj(
       "interfaces" -> Json.toJson(Seq(interface)),
       "dns" -> Json.toJson(Seq(aaaa)),
-      "nat" -> Json.toJson(Seq(nat)),
+      "natFans" -> Json.toJson(Seq(natFan)),
       "tunnels" -> Json.toJson(Seq(tunnel))
     ))
 

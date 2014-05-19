@@ -12,7 +12,7 @@ case class Interpreter() extends dsl.Interpreter with Logging {
   def interpret(diff: dsl.Diff) = {
     logChanges(diff.interfaces)
     logChanges(diff.dns)
-    logChanges(diff.nat)
+    logChanges(diff.natFans)
     logChanges(diff.tunnels)
   }
 

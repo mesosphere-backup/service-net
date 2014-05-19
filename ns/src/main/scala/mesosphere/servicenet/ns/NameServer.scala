@@ -36,7 +36,7 @@ class NameServer extends Logging {
   protected[this] var networkDoc: Doc = Doc(
     interfaces = Nil,
     dns = Nil,
-    nat = Nil,
+    natFans = Nil,
     tunnels = Nil
   )
 
@@ -142,7 +142,7 @@ object NameServer extends App {
         AAAA("foo.bar", Seq(loopbackAddress)),
         AAAA("foo.bar", Seq(anotherAddress))
       ),
-      nat = Nil,
+      natFans = Nil,
       tunnels = Nil
     )
   }
