@@ -41,17 +41,9 @@ trait DocProtocol {
   implicit val inet6SubnetFormat = new Format[Inet6Subnet] {
     def writes(net: Inet6Subnet): JsValue = JsString(net.getCanonicalForm)
     def reads(json: JsValue): JsResult[Inet6Subnet] = json match {
-      case JsString(s) => {
-        val components = s.split('/')
-        if (components.size != 2)
-          return JsError("Subnet must be of form: <addr>/<length>")
-        val Seq(addr, prefix): Seq[String] = components
-        Try(InetAddressHelper.ipv6(addr)) flatMap { addr =>
-          Try(Inet6Subnet(addr, prefix.toInt))
-        } match {
-          case Success(net)   => JsSuccess(net)
-          case Failure(cause) => JsError("Malformed subnet")
-        }
+      case JsString(s) => Try(Inet6Subnet.parse(s)) match {
+        case Success(net)   => JsSuccess(net)
+        case Failure(cause) => JsError("Malformed subnet")
       }
       case _ => JsError("Address must be a string")
     }
