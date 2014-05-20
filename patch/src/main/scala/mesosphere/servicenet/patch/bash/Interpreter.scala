@@ -5,21 +5,25 @@ import scala.sys.process._
 
 import mesosphere.servicenet.dsl
 import mesosphere.servicenet.util._
-import mesosphere.servicenet.patch.bash.Command._ // For implicits
+import mesosphere.servicenet.patch.bash.Command._
+import mesosphere.servicenet.config._
 
 /**
-  * The
+  * The Bash implementation of the
   */
-case class Interpreter(dryRun: Boolean = false)
+case class Interpreter(dryRun: Boolean = false)(
+  implicit val config: Config = Config())
     extends dsl.Interpreter with Logging {
   lazy val script: Array[Byte] =
     IO.read(getClass.getClassLoader.getResourceAsStream("patch.bash"))
 
-  def interpret(diff: dsl.Diff) = runCommands(
-    diff.interfaces.map(_.command) ++
-      diff.natFans.map(_.command) ++
-      diff.tunnels.map(_.command)
-  )
+  def interpret(diff: dsl.Diff) = {
+    runCommands(
+      diff.interfaces.map(_.command) ++
+        diff.natFans.map(_.command) ++
+        diff.tunnels.map(_.command)
+    )
+  }
 
   def runCommands(commands: Seq[Seq[String]]) {
     val tmp: File = File.createTempFile("servicenet-patch.", ".bash")
