@@ -26,7 +26,16 @@ function globals {
 function remove {
   local kind="$1" name="$2"
   case "$kind" in
-    tunnel|dummy) perform ip link del "$name" ;;
+    tunnel|dummy) if link_exists
+                  then perform ip link del "$name"
+                  else
+                    local code=$?
+                    if [[ $code -ne 1 ]]
+                    then
+                      msg "Fatal error while checking for link/device $name"
+                      return "$code"
+                    fi
+                  fi ;;
     natfan)       for chain in OUTPUT POSTROUTING
                   do
                     for rulenum in $(rules_for_name "$name" "$chain")
@@ -144,6 +153,10 @@ function rules_for_name {
   sort -rn # We want to delete the rules in reverse numerical order because if
            # we don't the indices change underneath us and the deletes will
            # hit the wrong rules or simply fail.
+}
+
+function link_exists {
+  perform ip link list dev "$1" &>/dev/null
 }
 
 function perform {
