@@ -3,13 +3,15 @@ package mesosphere.servicenet.patch.bash
 import java.io.File
 import scala.sys.process._
 
-import mesosphere.servicenet.dsl
-import mesosphere.servicenet.util._
-import mesosphere.servicenet.patch.bash.Command._
 import mesosphere.servicenet.config._
+import mesosphere.servicenet.dsl
+import mesosphere.servicenet.patch.bash.Command._
+import mesosphere.servicenet.util._
 
 /**
-  * The Bash implementation of the
+  * Calls out to a bundled Bash script to apply the [[dsl.Diff]]. The script
+  * contains functions which use `ip` and `iptables` to implement the network
+  * configuration.
   */
 case class Interpreter(dryRun: Boolean = false)(
   implicit val config: Config = Config())
@@ -18,10 +20,22 @@ case class Interpreter(dryRun: Boolean = false)(
     IO.read(getClass.getClassLoader.getResourceAsStream("patch.bash"))
 
   def interpret(diff: dsl.Diff) = {
+    val interfaces = diff.interfaces.filter {
+      case rem: dsl.Remove[_] => true
+      case dsl.Add(item) => item.addrs.forall { i =>
+        config.instanceSubnet.contains(i) || config.serviceSubnet.contains(i)
+      }
+    }
+    val tunnels = diff.tunnels.filter {
+      case r: dsl.Remove[_] => true
+      case dsl.Add(item) => item match {
+        case tun: dsl.Tunnel6in4 => tun.localEnd == config.localIPv4
+      }
+    }
     runCommands(
-      diff.interfaces.map(_.command) ++
+      interfaces.map(_.command) ++
         diff.natFans.map(_.command) ++
-        diff.tunnels.map(_.command)
+        tunnels.map(_.command)
     )
   }
 
