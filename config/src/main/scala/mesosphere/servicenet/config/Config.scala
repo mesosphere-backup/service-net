@@ -5,6 +5,28 @@ import java.net.Inet4Address
 import mesosphere.servicenet.dsl.Inet6Subnet
 import mesosphere.servicenet.util._
 
+/**
+  * The configuration for a service net instance can be provided with Java
+  * properties. For example, when running the project with SBT, you can use
+  * `sbt -Dhttp.port=2100 -Dsvcnet.ipv4=1.1.1.1 run` to set the web server
+  * port and control which IP is used for 6in4 tunnels.
+  *
+  * @param localIPv4 The local endpoint to use for 6in4 tunnels. (Properties:
+  *                  `svcnet.ipv4` or `mesosphere.servicenet.ipv4`)
+  * @param instanceSubnet The subnet on which instance IPs are allocated.
+  *                       (Properties: `svcnet.subnet.instance` or
+  *                        `mesosphere.servicenet.subnet.instance`)
+  * @param serviceSubnet The subnet on which service IPs are found. This is a
+  *                      global setting, shared by all nodes in the cluster.
+  *                      (Properties: `svcnet.subnet.service` or
+  *                       `mesosphere.servicenet.subnet.service`)
+  * @param nsPort The port on which to serve DNS traffic. (Properties:
+  *               `ns.port` or `svcnet.ns.port` or
+  *               `mesosphere.servicenet.ns.port`)
+  * @param httpPort The port on which to serve web traffic. (Properties:
+  *                 `http.port` or `svcnet.http.port` or
+  *                 `mesosphere.servicenet.http.port`)
+  */
 case class Config(localIPv4: Inet4Address,
                   instanceSubnet: Inet6Subnet,
                   serviceSubnet: Inet6Subnet,
@@ -28,22 +50,36 @@ object Config {
     */
   def apply(properties: Map[String, String] = underlying): Config = {
     val (ipv4, ipv6) = Net.addresses()
-    /*  2001:db8::/32 is reserved for use in documentation.
 
-        http://tools.ietf.org/html/rfc3849
-
-        "The document describes the use of the IPv6 address prefix 2001:DB8::/32
-         as a reserved prefix for use in documentation."
-    */
-    val localIPv4 = properties.get("local.ipv4").map(InetAddressHelper.ipv4(_))
+    // Use the IP passed as a property, or the host's IPv4 address, or else
+    // 127.0.0.1 and hope for the best.
+    val localIPv4 = properties.get("ipv4").map(InetAddressHelper.ipv4(_))
       .orElse(ipv4).getOrElse(InetAddressHelper.ipv4("127.0.0.1"))
-    val forInstances = properties.get("local.instanceSubnet")
+    // The instance subnet should be the one specified, or the one derived from
+    // the host's IPv6 address, or the one derived from the host's 6to4
+    // address, or failing that, the subnet 2001:db8:1::/64.
+    val forInstances = properties.get("subnet.instance")
       .orElse(ipv6.map(_.getHostAddress ++ "/64"))
       .orElse(ipv4.map(InetAddressHelper.ipv6(_))
         .map(_.getHostAddress ++ "/64"))
       .getOrElse("2001:db8:1::/64")
-    val forServices = properties.get("serviceSubnet")
+    // The service subnet should be the one specified, or if none is specified
+    // then 2001:db8:2::/64 is to be used.
+    val forServices = properties.get("subnet.service")
       .getOrElse("2001:db8:2::/64")
+
+    /*  The prefix 2001:db8::/32 used above is reserved for documentation.
+
+        http://tools.ietf.org/html/rfc3849
+
+        "The document describes the use of the IPv6 address
+         prefix 2001:DB8::/32 as a reserved prefix for use
+         in documentation."
+
+       Configurations that don't specify a service subnet and provide a way to
+       derive the instance subnet are thus effectively limited to serving as
+       demonstrations.
+    */
 
     Config(
       localIPv4 = localIPv4,
