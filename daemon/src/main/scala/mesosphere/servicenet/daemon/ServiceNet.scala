@@ -18,6 +18,8 @@ object ServiceNet extends App with Logging {
   val namePort = 8888
   val httpPort = 9000
 
-  nameServer run namePort
-  httpServer run httpPort
+  log info s"$config"
+
+  nameServer run config.nsPort
+  httpServer run config.httpPort
 }

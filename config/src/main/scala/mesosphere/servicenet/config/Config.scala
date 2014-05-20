@@ -7,11 +7,16 @@ import mesosphere.servicenet.util._
 
 case class Config(localIPv4: Inet4Address,
                   instanceSubnet: Inet6Subnet,
-                  serviceSubnet: Inet6Subnet)
+                  serviceSubnet: Inet6Subnet,
+                  nsPort: Int,
+                  httpPort: Int)
 
 object Config {
-  val underlying: Map[String, String] =
-    Properties.get("mesosphere.servicenet") ++ Properties.get("svcnet")
+  val underlying: Map[String, String] = Map() ++
+    Properties.get("ns", clipPrefix = false) ++
+    Properties.get("http", clipPrefix = false) ++
+    Properties.get("mesosphere.servicenet") ++
+    Properties.get("svcnet")
 
   /**
     * Obtain a config, using various defaulting rules to substitute for missing
@@ -39,10 +44,13 @@ object Config {
       .getOrElse("2001:db8:1::/64")
     val forServices = properties.get("serviceSubnet")
       .getOrElse("2001:db8:2::/64")
+
     Config(
       localIPv4 = localIPv4,
       instanceSubnet = Inet6Subnet.parse(forInstances),
-      serviceSubnet = Inet6Subnet.parse(forServices)
+      serviceSubnet = Inet6Subnet.parse(forServices),
+      nsPort = properties.get("ns.port").map(_.toInt).getOrElse(8888),
+      httpPort = properties.get("http.port").map(_.toInt).getOrElse(9000)
     )
   }
 
