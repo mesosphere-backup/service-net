@@ -9,9 +9,9 @@ import mesosphere.servicenet.patch.bash
 object ServiceNet extends App with Logging {
   implicit val config = Config()
   val nameServer = new NameServer
-  val httpServer = new HTTPServer({ diff =>
+  val httpServer = new HTTPServer({ (diff, doc) =>
     nameServer.update(diff)
-    bash.Interpreter(dryRun = true).interpret(diff)
+    bash.Interpreter().interpret(diff)
   })
 
   // TODO: Get these from config

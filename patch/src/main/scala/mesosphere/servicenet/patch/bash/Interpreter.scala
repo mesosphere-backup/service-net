@@ -13,8 +13,7 @@ import mesosphere.servicenet.util._
   * contains functions which use `ip` and `iptables` to implement the network
   * configuration.
   */
-case class Interpreter(dryRun: Boolean = false)(
-  implicit val config: Config = Config())
+case class Interpreter()(implicit val config: Config = Config())
     extends dsl.Interpreter with Logging {
   lazy val script: Array[Byte] =
     IO.read(getClass.getClassLoader.getResourceAsStream("patch.bash"))
@@ -48,8 +47,8 @@ case class Interpreter(dryRun: Boolean = false)(
     try {
       IO.overwrite(tmp, script)
       val path = tmp.getAbsolutePath
-      val preamble = if (dryRun) Seq(path, "--dry-run") else Seq(path)
-      for (command <- commands.map(preamble ++ _)) {
+      val pre = if (config.rehearsal) Seq(path, "--dry-run") else Seq(path)
+      for (command <- commands.map(pre ++ _)) {
         log debug s"call // ${command.mkString(" ")}"
         val exit = Process(command) ! ProcessLogger(
           s => log info s"stdout // $s",

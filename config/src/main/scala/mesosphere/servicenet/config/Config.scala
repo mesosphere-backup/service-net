@@ -20,6 +20,9 @@ import mesosphere.servicenet.util._
   *                      global setting, shared by all nodes in the cluster.
   *                      (Properties: `svcnet.subnet.service` or
   *                       `mesosphere.servicenet.subnet.service`)
+  * @param rehearsal In rehearsal mode, the interpreter should filter tasks
+  *                  and then print diagnostics for each change that would be
+  *                  performed.
   * @param nsPort The port on which to serve DNS traffic. (Properties:
   *               `ns.port` or `svcnet.ns.port` or
   *               `mesosphere.servicenet.ns.port`)
@@ -30,6 +33,7 @@ import mesosphere.servicenet.util._
 case class Config(localIPv4: Inet4Address,
                   instanceSubnet: Inet6Subnet,
                   serviceSubnet: Inet6Subnet,
+                  rehearsal: Boolean,
                   nsPort: Int,
                   httpPort: Int)
 
@@ -85,6 +89,7 @@ object Config {
       localIPv4 = localIPv4,
       instanceSubnet = Inet6Subnet.parse(forInstances),
       serviceSubnet = Inet6Subnet.parse(forServices),
+      rehearsal = properties.get("rehearsal").map(_.toBoolean).getOrElse(false),
       nsPort = properties.get("ns.port").map(_.toInt).getOrElse(8888),
       httpPort = properties.get("http.port").map(_.toInt).getOrElse(9000)
     )
