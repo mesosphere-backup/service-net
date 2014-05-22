@@ -46,7 +46,7 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
     def store() {
       log info s"Writing state to: ${config.stateStore}"
       val json = Json.toJson(doc)
-      IO.replace(new File(config.stateStore), Json.prettyPrint(json))
+      IO.replace(new File(config.stateStore), Json.prettyPrint(json) + "\n")
     }
   }
 
