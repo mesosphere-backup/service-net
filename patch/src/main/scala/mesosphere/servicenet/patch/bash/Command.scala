@@ -24,11 +24,10 @@ object Command {
     val mark = "0x12345678" // Hopefully no one else chooses this one.
     val command = change match {
       case dsl.Remove(name) => Seq("remove", "natfan", name)
-      case dsl.Add(item) => {
-        import item._
-        Seq("natfan", name, service.getHostAddress, mark) ++
-          instances.map(_.getHostAddress)
-      }
+      case dsl.Add(item) => "natfan" +: item.name +: mark +:
+        item.entrypoint.getHostAddress +:
+        item.midpoint.getHostAddress +:
+        item.endpoints.map(_.getHostAddress)
     }
   }
 

@@ -31,10 +31,14 @@ case class Interpreter()(implicit val config: Config = Config())
         case tun: dsl.Tunnel6in4 => tun.localEnd == config.localIPv4
       }
     }
-    log info dsl.Diff(interfaces, diff.dns, diff.natFans, tunnels).summary()
+    val natFans = diff.natFans.filter {
+      case r: dsl.Remove[_] => true
+      case dsl.Add(item)    => config.instanceSubnet.contains(item.midpoint)
+    }
+    log info dsl.Diff(interfaces, Nil, natFans, tunnels).summary()
     runCommands(
       interfaces.map(_.command) ++
-        diff.natFans.map(_.command) ++
+        natFans.map(_.command) ++
         tunnels.map(_.command)
     )
   }

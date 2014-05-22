@@ -70,7 +70,7 @@ trait DocProtocol {
 
   // NAT
 
-  implicit val natFormat = Json.format[NATFan]
+  implicit val natFanFormat = Json.format[NATFan]
 
   // Tunnel
 
