@@ -150,19 +150,24 @@ trait DocProtocol {
         case Remove(label) => Patch("remove", "tunnels", JsString(label))
       }
 
-      JsArray((iPatches ++ dPatches ++ nPatches ++ tPatches) map Json.toJson)
+      val allPatches = iPatches ++ dPatches ++ nPatches ++ tPatches
+
+      JsArray(allPatches.map(Json.toJson(_)))
     }
 
     def reads(json: JsValue): JsResult[Diff] = {
       json.validate[Seq[Patch]].map { patches: Seq[Patch] =>
 
-        val ifaces: Seq[Change[Interface]] =
-          patches.collect { case patch if patch.path == "interfaces" =>
+        val ifaces: JsResult[Seq[Change[Interface]]] = patches.collect {
+          case Patch(op, "interfaces", js) =>
+            if (op == "add") js.validate[Interface].map(Add(_))
+            else js.validate[String].map(Remove(_))
         }
 
-        Diff(ifaces, dns, nat, tunnels)
+        ifaces.map(Diff(ifaces, Nil, Nil, Nil))
       }
     }
+
   }
 
   // Doc
