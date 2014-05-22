@@ -31,6 +31,7 @@ case class Interpreter()(implicit val config: Config = Config())
         case tun: dsl.Tunnel6in4 => tun.localEnd == config.localIPv4
       }
     }
+    log info dsl.Diff(interfaces, diff.dns, diff.natFans, tunnels).summary()
     runCommands(
       interfaces.map(_.command) ++
         diff.natFans.map(_.command) ++

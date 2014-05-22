@@ -47,6 +47,14 @@ case class Diff(interfaces: Seq[Change[Interface]] = Nil,
     natFans = Diff.patch(natFans, original.natFans),
     tunnels = Diff.patch(tunnels, original.tunnels)
   )
+
+  def summary(): String =
+    Seq("Diff(",
+      s"interfaces(${Diff.summary(interfaces)})",
+      s"dns(${Diff.summary(dns)})",
+      s"natFans(${Diff.summary(natFans)})",
+      s"tunnels(${Diff.summary(tunnels)})",
+      ")").mkString(" ")
 }
 
 object Diff {
@@ -81,6 +89,14 @@ object Diff {
     val original: Map[String, T] = entities.map((e) => (e.name(), e)).toMap
 
     DNSNameSort.sortEntities((original -- removes ++ adds).values.toSeq)
+  }
+
+  def summary[T <: NetworkEntity](changes: Seq[Change[T]]): String = {
+    val removes: Set[String] = (for (Remove(name) <- changes) yield name).toSet
+    val adds: Set[String] = (for (Add(item) <- changes) yield item.name).toSet
+    Seq(s"+${(adds &~ removes).size}",
+      s"-${(removes &~ adds).size}",
+      s"±${(adds & removes).size}").mkString(" ")
   }
 }
 
