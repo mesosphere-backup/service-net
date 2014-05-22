@@ -46,9 +46,11 @@ function remove {
 }
 
 function dummy {
-  local name="$1" ipv6="$2"
+  local name="$1" ; shift
   perform ip link add "$name" type dummy
-  perform ip -6 addr add "$ipv6" dev "$name"
+  for ipv6 in "$@"
+  do perform ip -6 addr add "$ipv6" dev "$name"
+  done
   perform ip link set "$name" up
 }
 
