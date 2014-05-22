@@ -96,7 +96,7 @@ object Diff {
     val adds: Set[String] = (for (Add(item) <- changes) yield item.name).toSet
     Seq(s"+${(adds &~ removes).size}",
       s"-${(removes &~ adds).size}",
-      s"±${(adds & removes).size}").mkString(" ")
+      s"*${(adds & removes).size}").mkString(" ")
   }
 }
 
