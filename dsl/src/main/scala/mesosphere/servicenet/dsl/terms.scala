@@ -11,22 +11,15 @@ package mesosphere.servicenet.dsl
   *
   * @param interfaces virtual interfaces in the service network
   * @param dns DNS entries that point to things in the service net
-  * @param nat map a service IP to its backends using NAT
+  * @param natFans map a service IP to its backends using NAT
   * @param tunnels we sometimes need to tunnel traffic from one host to another
   *                to connect the service network (for example, tunneling IPv6
   *                over IPv4)
   */
-case class Doc(interfaces: Seq[Interface],
-               dns: Seq[DNS],
-               nat: Seq[NAT],
-               tunnels: Seq[Tunnel]) {
-  def diff(other: Doc): Diff = Diff(
-    interfaces = Diff.diff(interfaces, other.interfaces),
-    dns = Diff.diff(dns, other.dns),
-    nat = Diff.diff(nat, other.nat),
-    tunnels = Diff.diff(tunnels, other.tunnels)
-  )
-}
+case class Doc(interfaces: Seq[Interface] = Nil,
+               dns: Seq[DNS] = Nil,
+               natFans: Seq[NATFan] = Nil,
+               tunnels: Seq[Tunnel] = Nil)
 
 /**
   * A network entity is a convenient unit of network configuration -- a virtual
@@ -44,27 +37,50 @@ trait NetworkEntity {
   * Each parameter is a list of `Add`/`Remove` instances for the corresponding
   * parameter in `Doc`.
   */
-case class Diff(interfaces: Seq[Change[Interface]],
-                dns: Seq[Change[DNS]],
-                nat: Seq[Change[NAT]],
-                tunnels: Seq[Change[Tunnel]]) extends ((Doc) => Doc) {
+case class Diff(interfaces: Seq[Change[Interface]] = Nil,
+                dns: Seq[Change[DNS]] = Nil,
+                natFans: Seq[Change[NATFan]] = Nil,
+                tunnels: Seq[Change[Tunnel]] = Nil) extends ((Doc) => Doc) {
   def apply(original: Doc): Doc = Doc(
     interfaces = Diff.patch(interfaces, original.interfaces),
     dns = Diff.patch(dns, original.dns),
-    nat = Diff.patch(nat, original.nat),
+    natFans = Diff.patch(natFans, original.natFans),
     tunnels = Diff.patch(tunnels, original.tunnels)
   )
+
+  def summary(): String =
+    Seq("Diff(",
+      s"interfaces(${Diff.summary(interfaces)})",
+      s"dns(${Diff.summary(dns)})",
+      s"natFans(${Diff.summary(natFans)})",
+      s"tunnels(${Diff.summary(tunnels)})",
+      ")").mkString(" ")
 }
 
 object Diff {
+  def apply(a: Doc, b: Doc): Diff = Diff(
+    interfaces = Diff.diff(a.interfaces, b.interfaces),
+    dns = Diff.diff(a.dns, b.dns),
+    natFans = Diff.diff(a.natFans, b.natFans),
+    tunnels = Diff.diff(a.tunnels, b.tunnels)
+  )
+
+  /**
+    * Calculate the adds and removes needed to go from one monotypic sequence of
+    * network entities to another.
+    */
   def diff[T <: NetworkEntity](a: Seq[T], b: Seq[T]): Seq[Change[T]] = {
     val (one, two) = (Set(a: _*), Set(b: _*))
     val remove: Set[Remove[T]] = (one &~ two).map(Remove(_))
     val add: Set[Add[T]] = (two &~ one).map(Add(_))
     val changes: Set[Change[T]] = add ++ remove
-    DNSNameSort.sort(changes.toSeq)
+    DNSNameSort.sortChanges(changes.toSeq)
   }
 
+  /**
+    * Apply changes to a list of network entities, adding or removing each item
+    * all-of-a-piece.
+    */
   def patch[T <: NetworkEntity](changes: Seq[Change[T]],
                                 entities: Seq[T]): Seq[T] = {
     val removes: Seq[String] = for (Remove(name) <- changes) yield name
@@ -72,7 +88,15 @@ object Diff {
       (for (Add(e) <- changes) yield (e.name(), e)).toMap
     val original: Map[String, T] = entities.map((e) => (e.name(), e)).toMap
 
-    (original -- removes ++ adds).values.toSeq
+    DNSNameSort.sortEntities((original -- removes ++ adds).values.toSeq)
+  }
+
+  def summary[T <: NetworkEntity](changes: Seq[Change[T]]): String = {
+    val removes: Set[String] = (for (Remove(name) <- changes) yield name).toSet
+    val adds: Set[String] = (for (Add(item) <- changes) yield item.name).toSet
+    Seq(s"+${(adds &~ removes).size}",
+      s"-${(removes &~ adds).size}",
+      s"±${(adds & removes).size}").mkString(" ")
   }
 }
 
@@ -85,17 +109,29 @@ object Diff {
 trait Interpreter {
   /**
     * Apply a [[Diff]] to the system, updating the local network settings.
+    *
     * @param diff
     */
   def interpret(diff: Diff)
 
   /**
     * An interpreter can accept a [[Doc]] along with the [[Diff]], for sanity
-    * checking.
+    * checking. The default implementation simply ignores the [[Doc]].
+    *
     * @param diff
     * @param doc
     */
-  def interpret(diff: Diff, doc: Doc) { interpret(diff) }
+  def interpret(diff: Diff, doc: Doc): Unit = interpret(diff)
+
+  /**
+    * Implementations should ensure that applying a [[Doc]] directly is the
+    * same as applying the [[Diff]] that results from diffing the input with
+    * the empty [[Doc]].
+    *
+    * The default implementation applies this [[Diff]] with the two argument
+    * form of interpret.
+    */
+  def interpret(doc: Doc): Unit = interpret(Diff(Doc(), doc), doc)
 }
 
 //////////////////////////////////////////////////////////////////////////////

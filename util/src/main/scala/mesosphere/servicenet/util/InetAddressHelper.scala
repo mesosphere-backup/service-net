@@ -32,4 +32,11 @@ object InetAddressHelper {
         throw new IllegalArgumentException("An IPv6 address was supplied")
     }
 
+  /**
+    * Calculate the 6to4 address of an IPv4 address.
+    */
+  def ipv6(ipv4: Inet4Address): Inet6Address = {
+    val Array(a, b, c, d) = ipv4.getAddress
+    ipv6(f"2002:$a%02x$b%02x:$c%02x$d%02x::")
+  }
 }

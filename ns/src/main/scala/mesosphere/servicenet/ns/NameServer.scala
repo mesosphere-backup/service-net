@@ -17,6 +17,7 @@ import org.xbill.DNS.SimpleResolver
 import scala.concurrent.duration._
 import scala.util.{ Try, Success, Failure }
 import java.net.{ InetAddress, Inet6Address }
+import mesosphere.servicenet.config.Config
 
 /**
   * A simple DNS server
@@ -27,7 +28,7 @@ import java.net.{ InetAddress, Inet6Address }
   * `mesosphere.servicenet.dsl.Doc`, and delegates to the host for all other
   * queries.
   */
-class NameServer extends Logging {
+class NameServer()(implicit val config: Config = Config()) extends Logging {
 
   implicit val system = ActorSystem("NameServer")
   implicit val timeout = Timeout(5.seconds)
@@ -36,7 +37,7 @@ class NameServer extends Logging {
   protected[this] var networkDoc: Doc = Doc(
     interfaces = Nil,
     dns = Nil,
-    nat = Nil,
+    natFans = Nil,
     tunnels = Nil
   )
 
@@ -106,7 +107,7 @@ class NameServer extends Logging {
     }
   }
 
-  def run(port: Int): Unit = {
+  def run(port: Int = config.nsPort): Unit = {
     val nsHandler = system actorOf Props(new NameServerActor)
     IO(Dns) ? Dns.Bind(nsHandler, port) onComplete {
       case Success(bound) => log.info(s"Bound port [$port]")
@@ -120,7 +121,6 @@ class NameServer extends Logging {
 
   protected def toDns4s(msg: DNS.Message): dns4s.Message =
     dns4s.Message(dns4s.MessageBuffer().put(msg.toWire).flipped)
-
 }
 
 /**
@@ -142,11 +142,11 @@ object NameServer extends App {
         AAAA("foo.bar", Seq(loopbackAddress)),
         AAAA("foo.bar", Seq(anotherAddress))
       ),
-      nat = Nil,
+      natFans = Nil,
       tunnels = Nil
     )
   }
 
   ns update testDoc
-  ns.run(port = 8888) // TODO: get value for port from config
+  ns.run()
 }

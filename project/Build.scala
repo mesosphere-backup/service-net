@@ -6,7 +6,7 @@ import sbtassembly.Plugin._
 import sbtassembly.Plugin.AssemblyKeys._
 import com.typesafe.sbt.SbtScalariform._
 import scalariform.formatter.preferences._
-
+import sbtunidoc.Plugin._
 
 object ServiceNetBuild extends Build {
 
@@ -53,8 +53,8 @@ object ServiceNetBuild extends Build {
       ) ++
       assemblySettings ++
       graphSettings
-  ).dependsOn(daemon, dsl, http, ns, patch, util)
-   .aggregate(daemon, dsl, http, ns, patch, util)
+  ).dependsOn(daemon, dsl, http, ns, patch, config, util)
+   .aggregate(daemon, dsl, http, ns, patch, config, util)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -62,7 +62,7 @@ object ServiceNetBuild extends Build {
     id = subproject("daemon"),
     base = file("daemon"),
     settings = commonSettings
-  ).dependsOn(http, ns, patch)
+  ).dependsOn(http, ns, patch, config, util)
 
   lazy val dsl = Project(
     id = subproject("dsl"),
@@ -80,7 +80,7 @@ object ServiceNetBuild extends Build {
         "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION
       )
     )
-  ).dependsOn(dsl, util % "test->test;compile->compile")
+  ).dependsOn(dsl, config, util % "test->test;compile->compile")
 
   lazy val ns = Project(
     id = subproject("ns"),
@@ -92,13 +92,19 @@ object ServiceNetBuild extends Build {
         "dnsjava"            % "dnsjava"    % DNSJAVA_VERSION
       )
     )
-  ).dependsOn(dsl, util % "test->test;compile->compile")
+  ).dependsOn(dsl, config, util % "test->test;compile->compile")
 
   lazy val patch = Project(
     id = subproject("patch"),
     base = file("patch"),
     settings = commonSettings
-  ).dependsOn(dsl)
+  ).dependsOn(dsl, config, util)
+
+  lazy val config = Project(
+    id = subproject("config"),
+    base = file("config"),
+    settings = commonSettings
+  ).dependsOn(dsl, util)
 
   lazy val util = Project(
     id = subproject("util"),
@@ -112,13 +118,12 @@ object ServiceNetBuild extends Build {
     )
   )
 
-
   //////////////////////////////////////////////////////////////////////////////
   // SHARED SETTINGS
   //////////////////////////////////////////////////////////////////////////////
 
   lazy val commonSettings =
-    Project.defaultSettings ++ basicSettings ++ formatSettings
+    Project.defaultSettings ++ basicSettings ++ formatSettings ++ unidocSettings
 
   lazy val basicSettings = Seq(
     version := PROJECT_VERSION,

@@ -17,16 +17,16 @@ class DocProtocolSpec extends Spec {
     val inet6Subnet =
       Inet6Subnet(addr = inet6Address, prefixBits = 64)
 
-    val interface = Interface(name = "my-service", addr = inet6Address)
+    val interface = Interface(name = "my-service", addrs = Seq(inet6Address))
 
     val aaaa = AAAA(
       label = "foo.bar",
       addresses = Seq(inet6Address)
     )
 
-    val nat = NAT(
+    val natFan = NATFan(
       name = "my-nat",
-      subnet = inet6Subnet,
+      service = inet6Address,
       instances = Seq(inet6Address, inet6Address)
     )
 
@@ -41,7 +41,7 @@ class DocProtocolSpec extends Spec {
     val doc = Doc(
       interfaces = Seq(interface),
       dns = Seq(aaaa),
-      nat = Seq(nat),
+      natFans = Seq(natFan),
       tunnels = Seq(tunnel)
     )
 
@@ -112,7 +112,7 @@ class DocProtocolSpec extends Spec {
     val json = Json.toJson(interface)
     json should equal (Json.obj(
       "name" -> "my-service",
-      "addr" -> inet6Address
+      "addrs" -> Json.arr(inet6Address)
     ))
 
     val readResult = json.as[Interface]
@@ -131,17 +131,17 @@ class DocProtocolSpec extends Spec {
     readResult should equal (aaaa)
   }
 
-  it should "read and write NAT" in {
+  it should "read and write NATFan" in {
     import Fixture._
-    val json = Json.toJson(nat)
+    val json = Json.toJson(natFan)
     json should equal (Json.obj(
       "name" -> "my-nat",
-      "subnet" -> Json.toJson(inet6Subnet),
+      "service" -> Json.toJson(inet6Address),
       "instances" -> Json.toJson(Seq(inet6Address, inet6Address))
     ))
 
-    val readResult = json.as[NAT]
-    readResult should equal (nat)
+    val readResult = json.as[NATFan]
+    readResult should equal (natFan)
   }
 
   it should "read and write Tunnel" in {
@@ -165,7 +165,7 @@ class DocProtocolSpec extends Spec {
     json should equal (Json.obj(
       "interfaces" -> Json.toJson(Seq(interface)),
       "dns" -> Json.toJson(Seq(aaaa)),
-      "nat" -> Json.toJson(Seq(nat)),
+      "natFans" -> Json.toJson(Seq(natFan)),
       "tunnels" -> Json.toJson(Seq(tunnel))
     ))
 

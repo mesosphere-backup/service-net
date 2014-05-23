@@ -41,17 +41,9 @@ trait DocProtocol {
   implicit val inet6SubnetFormat = new Format[Inet6Subnet] {
     def writes(net: Inet6Subnet): JsValue = JsString(net.getCanonicalForm)
     def reads(json: JsValue): JsResult[Inet6Subnet] = json match {
-      case JsString(s) => {
-        val components = s.split('/')
-        if (components.size != 2)
-          return JsError("Subnet must be of form: <addr>/<length>")
-        val Seq(addr, prefix): Seq[String] = components
-        Try(InetAddressHelper.ipv6(addr)) flatMap { addr =>
-          Try(Inet6Subnet(addr, prefix.toInt))
-        } match {
-          case Success(net)   => JsSuccess(net)
-          case Failure(cause) => JsError("Malformed subnet")
-        }
+      case JsString(s) => Try(Inet6Subnet.parse(s)) match {
+        case Success(net)   => JsSuccess(net)
+        case Failure(cause) => JsError("Malformed subnet")
       }
       case _ => JsError("Address must be a string")
     }
@@ -59,23 +51,10 @@ trait DocProtocol {
 
   // Interface
 
-  implicit val addressOrSubnetFormat =
-    new Format[Either[Inet6Address, Inet6Subnet]] {
-      def writes(v: Either[Inet6Address, Inet6Subnet]): JsValue =
-        v match {
-          case Left(addr)    => inet6AddressFormat writes addr
-          case Right(subnet) => inet6SubnetFormat writes subnet
-        }
-      def reads(json: JsValue): JsResult[Either[Inet6Address, Inet6Subnet]] =
-        json match {
-          case _: JsString =>
-            inet6AddressFormat.reads(json).map(Left(_)) orElse
-              inet6SubnetFormat.reads(json).map(Right(_))
-          case _ => JsError("Address or subnet must be a string")
-        }
-    }
-
-  implicit val interfaceFormat = Json.format[Interface]
+  implicit val interfaceFormat: Format[Interface] = (
+    (__ \ "name").format[String] and
+    (__ \ "addrs").format[Seq[Inet6Address]]
+  )(Interface.apply(_, _), unlift(Interface.unapply))
 
   // DNS
 
@@ -91,7 +70,7 @@ trait DocProtocol {
 
   // NAT
 
-  implicit val natFormat = Json.format[NAT]
+  implicit val natFormat = Json.format[NATFan]
 
   // Tunnel
 
@@ -163,11 +142,9 @@ trait DocProtocol {
             if (op == "add") js.validate[Interface].map(Add(_))
             else js.validate[String].map(Remove(_))
         }
-
         ifaces.map(Diff(ifaces, Nil, Nil, Nil))
       }
     }
-
   }
 
   // Doc
