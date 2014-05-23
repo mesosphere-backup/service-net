@@ -26,7 +26,6 @@ object Command {
       case dsl.Remove(name) => Seq("remove", "natfan", name)
       case dsl.Add(item) => "natfan" +: item.name +: mark +:
         item.entrypoint.getHostAddress +:
-        item.midpoint.getHostAddress +:
         item.endpoints.map(_.getHostAddress)
     }
   }

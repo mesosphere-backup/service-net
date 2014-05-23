@@ -13,7 +13,7 @@ object ServiceNet extends App with Logging {
 
   val nameServer = new NameServer
   val httpServer = new HTTPServer({ (diff, doc) =>
-    nameServer.update(diff)
+    nameServer.update(doc)
     bash.Interpreter().interpret(diff)
   })
 

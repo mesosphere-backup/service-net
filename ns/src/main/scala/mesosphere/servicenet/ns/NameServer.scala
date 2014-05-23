@@ -1,8 +1,9 @@
 package mesosphere.servicenet.ns
 
-import mesosphere.servicenet
-import mesosphere.servicenet.dsl.{ AAAA, Doc, Diff }
-import mesosphere.servicenet.util.{ InetAddressHelper, Logging }
+import java.net.{ InetAddress, Inet6Address }
+import scala.concurrent.duration._
+import scala.util.{ Try, Success, Failure }
+
 import akka.actor._
 import akka.pattern.ask
 import akka.io.IO
@@ -11,13 +12,14 @@ import com.github.mkroli.dns4s
 import com.github.mkroli.dns4s.akka.Dns
 import com.github.mkroli.dns4s.dsl._
 import com.github.mkroli.dns4s.section.{ QuestionSection, ResourceRecord => RR }
-import com.github.mkroli.dns4s.section.resource.AAAAResource
+import com.github.mkroli.dns4s.section.resource.{ PTRResource, AAAAResource }
 import org.xbill.DNS
 import org.xbill.DNS.SimpleResolver
-import scala.concurrent.duration._
-import scala.util.{ Try, Success, Failure }
-import java.net.{ InetAddress, Inet6Address }
+
+import mesosphere.servicenet
 import mesosphere.servicenet.config.Config
+import mesosphere.servicenet.dsl.{ AAAA, DNS, Doc, Diff }
+import mesosphere.servicenet.util.{ InetAddressHelper, Logging }
 
 /**
   * A simple DNS server
@@ -34,12 +36,9 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
   implicit val timeout = Timeout(5.seconds)
   implicit val executionContext = system.dispatcher
 
-  protected[this] var networkDoc: Doc = Doc(
-    interfaces = Nil,
-    dns = Nil,
-    natFans = Nil,
-    tunnels = Nil
-  )
+  protected[this] var networkDoc: Doc = Doc()
+  protected[this] var forward: Map[String, Seq[DNS]] = Map()
+  protected[this] var reverse: Map[String, DNS] = Map()
 
   // See: http://www.dnsjava.org/doc/org/xbill/DNS/ResolverConfig.html
   protected val underlying: SimpleResolver = new SimpleResolver()
@@ -48,8 +47,10 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
     query match {
       case Query(_) ~ Questions(QName(name) ~ TypeAAAA() :: Nil) =>
         log debug s"Received 'AAAA' query for [$name]"
-        val answers: Seq[RR] = resolveFromDoc(name, network()).collect {
-          case r: AAAA => r.addresses.map { address: Inet6Address =>
+        val answers: Seq[RR] = forward.getOrElse(name, Nil).collect {
+          case r: AAAA => r.addrs filter {
+            address => !r.localize || config.instanceSubnet.contains(address)
+          } map { address =>
             RR(
               `class` = RR.`classIN`,
               name = r.label,
@@ -63,18 +64,30 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
           Some(Response ~ Questions(query.question: _*) ~ Answers(answers: _*))
         else
           None
+      case Query(_) ~ Questions(QName(name) ~ TypePTR() :: Nil) =>
+        log debug s"Received 'PTR' query for [$name]"
+        reverse.get(name).map { dns =>
+          val answer: RR = RR(
+            `class` = RR.`classIN`,
+            name = name,
+            rdata = PTRResource(dns.label),
+            ttl = dns.ttl,
+            `type` = RR.`typePTR`
+          )
+          Response ~ Questions(query.question: _*) ~ Answers(answer)
+        }
 
       case _ => None
     }
 
   def delegate(query: dns4s.Message): Option[dns4s.Message] =
     Try {
-      log debug s"Delegating query to host resolver: [$query]"
+      log debug s"Delegating query to host resolver:\n$query"
       val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
-      log debug s"Sending query to upstream name server: [$msg]"
+      log debug s"Sending query to upstream name server:\n$msg"
       val response = underlying send msg
-      log debug s"Received response from upstream name server: [$response]"
+      log debug s"Received response from upstream name server:\n$response"
       toDns4s(response)
     }.toOption
 
@@ -83,14 +96,15 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
     doc.dns.filter { _.label == label }
 
   /**
-    * A description of the underlying network topology.
-    */
-  def network(): Doc = networkDoc
-
-  /**
     * Updates this name server with a new description of the underlying network.
     */
-  def update(doc: Doc): Unit = synchronized { networkDoc = doc }
+  def update(doc: Doc): Unit = synchronized {
+    networkDoc = doc
+    forward = doc.dns.groupBy(_.label)
+    reverse = doc.dns.collect{
+      case aaaa: AAAA => aaaa.addrs.map(InetAddressHelper.arpa(_) -> aaaa)
+    }.flatten.toMap
+  }
 
   /**
     * Updates this name server with changes to the underlying network.

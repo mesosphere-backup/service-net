@@ -21,13 +21,12 @@ class DocProtocolSpec extends Spec {
 
     val aaaa = AAAA(
       label = "foo.bar",
-      addresses = Seq(inet6Address)
+      addrs = Seq(inet6Address)
     )
 
     val natFan = NATFan(
       name = "my-nat",
       entrypoint = inet6Address,
-      midpoint = inet6Address,
       endpoints = Seq(inet6Address, inet6Address)
     )
 
@@ -118,7 +117,8 @@ class DocProtocolSpec extends Spec {
     val json = Json.toJson(aaaa)
     json should equal (Json.obj(
       "label" -> "foo.bar",
-      "addresses" -> Json.toJson(Seq(inet6Address))
+      "addrs" -> Json.toJson(Seq(inet6Address)),
+      "localize" -> false
     ))
 
     val readResult = json.as[DNS]
@@ -131,7 +131,6 @@ class DocProtocolSpec extends Spec {
     json should equal (Json.obj(
       "name" -> "my-nat",
       "entrypoint" -> Json.toJson(inet6Address),
-      "midpoint" -> Json.toJson(inet6Address),
       "endpoints" -> Json.toJson(Seq(inet6Address, inet6Address))
     ))
 

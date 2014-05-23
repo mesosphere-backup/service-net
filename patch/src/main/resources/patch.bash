@@ -26,7 +26,7 @@ function globals {
 function remove {
   local kind="$1" name="$2"
   case "$kind" in
-    tunnel|dummy) if link_exists
+    tunnel|dummy) if link_exists "$name"
                   then perform ip link del "$name"
                   else
                     local code=$?
@@ -65,7 +65,7 @@ function tunnel {
 }
 
 function natfan {
-  local name="$1" mark="$2" entrypoint="$3" midpoint="$4" ; shift 4
+  local name="$1" mark="$2" entrypoint="$3" ; shift 3
   [[ $# -gt 0 ]] || return 0
   local endpoints=( "$@" )
   # The endpoints are passed as <ip>@<weight>. We parse them and put the
@@ -89,22 +89,20 @@ function natfan {
   # networking stack. Packet marks are IP protocol agnostic and are not passed
   # on the wire.
 #!mark "$name" "$ipv6" "$mark"
-  # We take all packets headed to the entrypoint and NAT them to the midpoint.
-  dnat "$name" "$entrypoint" "$midpoint"
   local n=0 next_to_last=$(( ${#ips[@]} - 1 ))
   while [[ $n -lt $next_to_last ]]
   do
     # Rewrite the destination address to point to this backend.
-    dnat "$name" "$midpoint" "${ips[$n]}" "${probabilities[$n]}"
+    dnat "$name" "$entrypoint" "${ips[$n]}" "${probabilities[$n]}"
     # Rewrite the source address, so traffic can find its way back to the
     # client connection. Do this only for packets where the destination is one
     # of our backends and the mark matches.
-  #!snat "$name" "$midpoint" "${ips[$n]}" "$mark"
+  #!snat "$name" "$entrypoint" "${ips[$n]}" "$mark"
     n=$(( $n + 1 ))
   done
   # The final backend is treated as a catchall -- no probabilities involved.
   # For services with only one backend, we have a fast path.
-  dnat "$name" "$midpoint" "${ips[$n]}"
+  dnat "$name" "$entrypoint" "${ips[$n]}"
 #!snat "$name" "$midpoint" "${ips[$n]}" "$mark"
 } # TODO: Create a chain for these natfans and use iptables-restore to manage
 ########  the chain in aggregate. This should be more performant

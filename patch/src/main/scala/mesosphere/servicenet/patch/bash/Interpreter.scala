@@ -33,7 +33,7 @@ case class Interpreter()(implicit val config: Config = Config())
     }
     val natFans = diff.natFans.filter {
       case r: dsl.Remove[_] => true
-      case dsl.Add(item)    => config.instanceSubnet.contains(item.midpoint)
+      case dsl.Add(item)    => config.instanceSubnet.contains(item.entrypoint)
     }
     log info dsl.Diff(interfaces, Nil, natFans, tunnels).summary()
     runCommands(

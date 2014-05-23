@@ -7,10 +7,14 @@ import java.net.Inet6Address
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-  * IPv6 record
+  * @param localize Indicates that the DNS server should use local
+  *                 information, like the instance subnet, to filter the
+  *                 records before returning them.
   */
-case class AAAA(label: String, addresses: Seq[Inet6Address]) extends DNS {
-  val data: Seq[String] = addresses.map(_.getHostAddress)
+case class AAAA(label: String,
+                addrs: Seq[Inet6Address],
+                localize: Boolean = false) extends DNS {
+  val data: Seq[String] = addrs.map(_.getHostAddress)
 }
 
 ///**

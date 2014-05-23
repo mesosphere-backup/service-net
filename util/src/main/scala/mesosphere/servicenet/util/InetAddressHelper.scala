@@ -39,4 +39,12 @@ object InetAddressHelper {
     val Array(a, b, c, d) = ipv4.getAddress
     ipv6(f"2002:$a%02x$b%02x:$c%02x$d%02x::")
   }
+
+  def arpa(ipv6: Inet6Address): String = {
+    ipv6.getAddress().map(b => f"$b%02x".toCharArray)
+      .flatten.mkString(".") + ".ip6.arpa."
+  }
+
+  def arpa(ipv4: Inet4Address): String =
+    ipv4.getHostAddress.split('.').reverse.mkString(".") + ".in-addr.arpa."
 }
