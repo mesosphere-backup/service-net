@@ -6,7 +6,7 @@ import sbtassembly.Plugin._
 import sbtassembly.Plugin.AssemblyKeys._
 import com.typesafe.sbt.SbtScalariform._
 import scalariform.formatter.preferences._
-
+import sbtunidoc.Plugin._
 
 object ServiceNetBuild extends Build {
 
@@ -123,7 +123,7 @@ object ServiceNetBuild extends Build {
   //////////////////////////////////////////////////////////////////////////////
 
   lazy val commonSettings =
-    Project.defaultSettings ++ basicSettings ++ formatSettings
+    Project.defaultSettings ++ basicSettings ++ formatSettings ++ unidocSettings
 
   lazy val basicSettings = Seq(
     version := PROJECT_VERSION,
