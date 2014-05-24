@@ -82,7 +82,8 @@ object Config extends Logging {
     fromEnvironment.get("config").map(Seq(_)).getOrElse(defaultSearchPath)
   )
 
-  def searchFiles(paths: Seq[String] = defaultSearchPath): Map[String, String] = {
+  def searchFiles(
+    paths: Seq[String] = defaultSearchPath): Map[String, String] = {
     for (f <- paths.map(new File(_)) if f.exists()) {
       log info s"Loading properties from ${f.getAbsolutePath}"
       return trimmed(Properties.load(f))
@@ -149,7 +150,7 @@ object Config extends Logging {
       serviceSubnet = Inet6Subnet.parse(forServices),
       rehearsal = properties.get("rehearsal").map(_.toBoolean).getOrElse(false),
       stateStore = properties.get("state").getOrElse("/tmp/svcnet.json"),
-      nsPort = properties.get("ns.port").map(_.toInt).getOrElse(8888),
+      nsPort = properties.get("ns.port").map(_.toInt).getOrElse(53),
       httpPort = properties.get("http.port").map(_.toInt).getOrElse(9000)
     )
   }

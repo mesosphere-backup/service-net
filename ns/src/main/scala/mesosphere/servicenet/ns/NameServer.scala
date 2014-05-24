@@ -64,6 +64,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
           Some(Response ~ Questions(query.question: _*) ~ Answers(answers: _*))
         else
           None
+
       case Query(_) ~ Questions(QName(name) ~ TypePTR() :: Nil) =>
         log debug s"Received 'PTR' query for [$name]"
         reverse.get(name).map { dns =>
