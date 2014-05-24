@@ -1,6 +1,6 @@
 package mesosphere.servicenet.ns
 
-import java.net.{ InetAddress, Inet6Address }
+import java.net.{ InetSocketAddress, InetAddress, Inet6Address }
 import scala.concurrent.duration._
 import scala.util.{ Try, Success, Failure }
 
@@ -14,12 +14,12 @@ import com.github.mkroli.dns4s.dsl._
 import com.github.mkroli.dns4s.section.{ QuestionSection, ResourceRecord => RR }
 import com.github.mkroli.dns4s.section.resource.{ PTRResource, AAAAResource }
 import org.xbill.DNS
-import org.xbill.DNS.SimpleResolver
 
 import mesosphere.servicenet
 import mesosphere.servicenet.config.Config
 import mesosphere.servicenet.dsl.{ AAAA, DNS, Doc, Diff }
 import mesosphere.servicenet.util.{ InetAddressHelper, Logging }
+import java.lang.reflect.Field
 
 /**
   * A simple DNS server
@@ -41,7 +41,18 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
   protected[this] var reverse: Map[String, DNS] = Map()
 
   // See: http://www.dnsjava.org/doc/org/xbill/DNS/ResolverConfig.html
-  protected val underlying: SimpleResolver = new SimpleResolver()
+  protected lazy val underlying: DNS.SimpleResolver = {
+    // We filter the resolvers if we are listening on port 53 because we don't
+    // want to delegate DNS requests to ourselves!
+    val fromSystem = DNS.ResolverConfig.getCurrentConfig().servers()
+    val namesOfLocalhost = Set("::1", "localhost", "127.0.0.1")
+    val servers =
+      if (config.nsPort != 53) fromSystem
+      else fromSystem.filterNot(namesOfLocalhost.contains(_))
+    require(servers.size > 0,
+      "There must be at least one valid fallback DNS server")
+    new DNS.SimpleResolver(servers(0))
+  }
 
   def resolve(query: dns4s.Message): Option[dns4s.Message] =
     query match {
@@ -83,25 +94,36 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
 
   def delegate(query: dns4s.Message): Option[dns4s.Message] =
     Try {
-      log debug s"Delegating query to host resolver:\n$query"
+      val resolverAddress: InetSocketAddress = try {
+        val f: Field = underlying.getClass().getDeclaredField("address")
+        f.setAccessible(true)
+        f.get(underlying).asInstanceOf[InetSocketAddress]
+      }
+      catch {
+        case e: Throwable => {
+          log error s"Failed to read resolver address: $e"
+          throw e
+        }
+      }
+      val formattedResolver = resolverAddress.getAddress.getHostAddress + {
+        val p = resolverAddress.getPort
+        if (p == 53) "" else ":" + p.toString
+      }
+      log debug s"Delegating to $formattedResolver for query:\n$query"
       val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
-      log debug s"Sending query to upstream name server:\n$msg"
+      log debug s"Sending message to upstream name server:\n$msg"
       val response = underlying send msg
       log debug s"Received response from upstream name server:\n$response"
       toDns4s(response)
     }.toOption
-
-  // TODO: this could be more efficient
-  def resolveFromDoc(label: String, doc: Doc): Seq[servicenet.dsl.DNS] =
-    doc.dns.filter { _.label == label }
 
   /**
     * Updates this name server with a new description of the underlying network.
     */
   def update(doc: Doc): Unit = synchronized {
     networkDoc = doc
-    forward = doc.dns.groupBy(_.label)
+    forward = doc.dns.groupBy(_.label.replaceAll("[.]$", ""))
     reverse = doc.dns.collect{
       case aaaa: AAAA => aaaa.addrs.map(InetAddressHelper.arpa(_) -> aaaa)
     }.flatten.toMap

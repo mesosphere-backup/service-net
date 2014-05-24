@@ -42,9 +42,9 @@ object InetAddressHelper {
 
   def arpa(ipv6: Inet6Address): String = {
     ipv6.getAddress().map(b => f"$b%02x".toCharArray)
-      .flatten.mkString(".") + ".ip6.arpa."
+      .flatten.reverse.mkString(".") + ".ip6.arpa"
   }
 
   def arpa(ipv4: Inet4Address): String =
-    ipv4.getHostAddress.split('.').reverse.mkString(".") + ".in-addr.arpa."
+    ipv4.getHostAddress.split('.').reverse.mkString(".") + ".in-addr.arpa"
 }
