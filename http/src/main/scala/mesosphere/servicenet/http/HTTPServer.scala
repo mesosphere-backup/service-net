@@ -15,7 +15,7 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
   implicit val config: Config = Config())
     extends DocProtocol with Logging {
 
-  @volatile protected var doc: Doc = Doc(Nil, Nil, Nil, Nil)
+  @volatile protected var doc: Doc = Doc()
 
   def update(docPrime: Doc) {
     update(Diff(doc, docPrime))
@@ -37,8 +37,11 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
         if (data.length <= 0) return
         log info s"Reading state from: ${config.stateStore}"
         Json.parse(data).validate[Doc] match {
-          case JsSuccess(docPrime, _) => doc = docPrime
-          case error: JsError         => log warn "Ignoring bad state store"
+          case JsSuccess(docPrime, _) => {
+            doc = docPrime
+            update(docPrime)
+          }
+          case error: JsError => log warn "Ignoring bad state store"
         }
       }
     }
