@@ -30,9 +30,13 @@ import java.io.File
   *                      global setting, shared by all nodes in the cluster.
   *                      (Properties: `svcnet.subnet.service` or
   *                       `mesosphere.servicenet.subnet.service`)
+  * @param subdomain Indicates the subdomain which belongs to this service
+  *                  network. (Properties: `svcnet.subdomain` and
+  *                   `mesosphere.servicenet.subdomain`)
   * @param rehearsal In rehearsal mode, the interpreter should filter tasks
   *                  and then print diagnostics for each change that would be
-  *                  performed.
+  *                  performed. DNS is updated as usual. (Properties:
+  *                   `svcnet.rehearsal` and `mesosphere.servicenet.rehearsal`)
   * @param stateStore The path at which to store the state file, to allow the
   *                   service to be restarted safely. The default is
   *                   `/tmp/svcnet.json` (maintaining state between reboots is
@@ -50,6 +54,7 @@ case class Config(localIPv4: Inet4Address,
                   instanceSubnet: Inet6Subnet,
                   serviceSubnet: Inet6Subnet,
                   rehearsal: Boolean,
+                  subdomain: String,
                   stateStore: String,
                   nsPort: Int,
                   httpPort: Int) extends Logging {
@@ -57,6 +62,7 @@ case class Config(localIPv4: Inet4Address,
     s"svcnet.ipv4=${localIPv4.getHostAddress}",
     s"svcnet.subnet.instance=${instanceSubnet.getCanonicalForm}",
     s"svcnet.subnet.service=${serviceSubnet.getCanonicalForm}",
+    s"svcnet.subdomain=$subdomain",
     s"svcnet.rehearsal=$rehearsal",
     s"svcnet.state=$stateStore",
     s"ns.port=$nsPort",
@@ -148,6 +154,7 @@ object Config extends Logging {
       localIPv4 = localIPv4,
       instanceSubnet = Inet6Subnet.parse(forInstances),
       serviceSubnet = Inet6Subnet.parse(forServices),
+      subdomain = properties.get("subdomain").getOrElse("svc.dcc"),
       rehearsal = properties.get("rehearsal").map(_.toBoolean).getOrElse(false),
       stateStore = properties.get("state").getOrElse("/tmp/svcnet.json"),
       nsPort = properties.get("ns.port").map(_.toInt).getOrElse(53),
