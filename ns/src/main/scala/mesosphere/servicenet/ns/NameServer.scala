@@ -1,5 +1,6 @@
 package mesosphere.servicenet.ns
 
+import java.lang.reflect.Field
 import java.net.{ InetSocketAddress }
 import scala.concurrent.duration._
 import scala.util.{ Try, Success, Failure }
@@ -18,7 +19,6 @@ import org.xbill.DNS
 import mesosphere.servicenet.config.Config
 import mesosphere.servicenet.dsl.{ AAAA, DNS, Doc, Diff }
 import mesosphere.servicenet.util.{ InetAddressHelper, Logging }
-import java.lang.reflect.Field
 
 /**
   * A simple DNS server
