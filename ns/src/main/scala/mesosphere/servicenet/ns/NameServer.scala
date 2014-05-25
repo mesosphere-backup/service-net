@@ -1,6 +1,6 @@
 package mesosphere.servicenet.ns
 
-import java.net.{ InetSocketAddress, InetAddress, Inet6Address }
+import java.net.{ InetSocketAddress }
 import scala.concurrent.duration._
 import scala.util.{ Try, Success, Failure }
 
@@ -15,7 +15,6 @@ import com.github.mkroli.dns4s.section.{ ResourceRecord => RR }
 import com.github.mkroli.dns4s.section.resource.{ PTRResource, AAAAResource }
 import org.xbill.DNS
 
-import mesosphere.servicenet
 import mesosphere.servicenet.config.Config
 import mesosphere.servicenet.dsl.{ AAAA, DNS, Doc, Diff }
 import mesosphere.servicenet.util.{ InetAddressHelper, Logging }
