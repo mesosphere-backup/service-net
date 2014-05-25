@@ -11,7 +11,7 @@ import akka.util.Timeout
 import com.github.mkroli.dns4s
 import com.github.mkroli.dns4s.akka.Dns
 import com.github.mkroli.dns4s.dsl._
-import com.github.mkroli.dns4s.section.{ QuestionSection, ResourceRecord => RR }
+import com.github.mkroli.dns4s.section.{ ResourceRecord => RR }
 import com.github.mkroli.dns4s.section.resource.{ PTRResource, AAAAResource }
 import org.xbill.DNS
 
@@ -57,7 +57,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
   def resolve(query: dns4s.Message): Option[dns4s.Message] =
     query match {
       case Query(_) ~ Questions(QName(name) ~ TypeAAAA() :: Nil) =>
-        log debug s"Received 'AAAA' query for [$name]"
+        log info s"Received 'AAAA' query for [$name]"
         val answers: Seq[RR] = forward.getOrElse(name, Nil).collect {
           case r: AAAA => r.addrs filter {
             address => !r.localize || config.instanceSubnet.contains(address)
@@ -91,7 +91,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
           None
 
       case Query(_) ~ Questions(QName(name) ~ TypePTR() :: Nil) =>
-        log debug s"Received 'PTR' query for [$name]"
+        log info s"Received 'PTR' query for [$name]"
         reverse.get(name).map { dns =>
           val answer: RR = RR(
             `class` = RR.`classIN`,
@@ -123,7 +123,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
         val p = resolverAddress.getPort
         if (p == 53) "" else ":" + p.toString
       }
-      log debug s"Delegating to $formattedResolver for query:\n$query"
+      log info s"Delegating to $formattedResolver for query:\n$query"
       val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
       log debug s"Sending message to upstream name server:\n$msg"
@@ -138,7 +138,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
   def update(doc: Doc): Unit = synchronized {
     networkDoc = doc
     forward = doc.dns.groupBy(_.label.replaceAll("[.]$", ""))
-    reverse = doc.dns.collect{
+    reverse = doc.dns.collect {
       case aaaa: AAAA => aaaa.addrs.map(InetAddressHelper.arpa(_) -> aaaa)
     }.flatten.toMap
   }
@@ -153,7 +153,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
       case msg: dns4s.Message =>
         resolve(msg) orElse delegate(msg) match {
           case Some(answer) => sender ! answer
-          case None         => log debug s"No result for $msg"
+          case None         => log debug s"No result for:\n$msg"
         }
     }
   }
