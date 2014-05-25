@@ -76,13 +76,19 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
         else
           None
 
-      // TODO: An A query for a name for which we are serving an AAAA should
-      //       result in a direct response with an empty result, without
-      //       delegation, so the client makes a follow-up AAAA query right
-      //       away. The A, then AAAA pattern is the default on most systems.
-      //       Forcing people to change it would be inconvenient and best and
-      //       could break some software. Actually delegating the A would waste
-      //       time at best and actually a return a bogus result at worst.
+      // This case is here to speed up the common A, then AAAA query pattern.
+      case Query(_) ~ Questions(QName(name) ~ TypeA() :: Nil) =>
+        log info s"Received 'A' query for [$name]"
+        val matchingAAAA: Seq[AAAA] = forward.getOrElse(name, Nil).collect {
+          case r: AAAA => r
+        }
+        if (matchingAAAA.nonEmpty) {
+          log info s"Returning NXDOMAIN for an 'A' query where we have an" +
+            s" 'AAAA' record to trigger client requery for [$name]"
+          Some(Response ~ NameError ~ Questions(query.question: _*) ~ Answers())
+        }
+        else
+          None
 
       case Query(_) ~ Questions(QName(name) ~ TypePTR() :: Nil) =>
         log debug s"Received 'PTR' query for [$name]"
