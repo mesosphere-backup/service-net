@@ -57,7 +57,7 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
   def resolve(query: dns4s.Message): Option[dns4s.Message] =
     query match {
       case Query(_) ~ Questions(QName(name) ~ TypeAAAA() :: Nil) =>
-        log info s"Received 'AAAA' query for [$name]"
+        log info s"$name Processing AAAA query"
         val answers: Seq[RR] = forward.getOrElse(name, Nil).collect {
           case r: AAAA => r.addrs filter {
             address => !r.localize || config.instanceSubnet.contains(address)
@@ -78,20 +78,19 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
 
       // This case is here to speed up the common A, then AAAA query pattern.
       case Query(_) ~ Questions(QName(name) ~ TypeA() :: Nil) =>
-        log info s"Received 'A' query for [$name]"
+        log info s"$name Processing A query"
         val matchingAAAA: Seq[AAAA] = forward.getOrElse(name, Nil).collect {
           case r: AAAA => r
         }
         if (matchingAAAA.nonEmpty) {
-          log info s"Returning NXDOMAIN for an 'A' query where we have an" +
-            s" 'AAAA' record to trigger client requery for [$name]"
+          log info s"$name Returning NXDOMAIN for A to trigger AAAA"
           Some(Response ~ NameError ~ Questions(query.question: _*) ~ Answers())
         }
         else
           None
 
       case Query(_) ~ Questions(QName(name) ~ TypePTR() :: Nil) =>
-        log info s"Received 'PTR' query for [$name]"
+        log info s"$name Processing PTR query"
         reverse.get(name).map { dns =>
           val answer: RR = RR(
             `class` = RR.`classIN`,
@@ -123,12 +122,15 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
         val p = resolverAddress.getPort
         if (p == 53) "" else ":" + p.toString
       }
-      log info s"Delegating to $formattedResolver for query:\n$query"
+      val name: String = query match {
+        case Query(_) ~ Questions(QName(name)) => name
+      }
+      log info s"$name Delegating to $formattedResolver"
       val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
-      log debug s"Sending message to upstream name server:\n$msg"
+      log debug s"$name Sending message to upstream name server:\n$msg"
       val response = underlying send msg
-      log debug s"Received response from upstream name server:\n$response"
+      log debug s"$name Received response from upstream name server:\n$response"
       toDns4s(response)
     }.toOption
 
