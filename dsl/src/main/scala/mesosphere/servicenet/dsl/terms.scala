@@ -144,7 +144,7 @@ trait Interpreter {
   *
   * @tparam T type of network entity
   */
-trait Change[T <: NetworkEntity]
+trait Change[+T <: NetworkEntity]
 
 case class Add[T <: NetworkEntity](item: T) extends Change[T]
 
