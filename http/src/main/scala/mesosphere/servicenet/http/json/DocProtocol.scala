@@ -100,44 +100,78 @@ trait DocProtocol {
   //   "op": "remove", "path": "interfaces", "value": "my-service"
   // }
 
-  // implicit val networkEntityFormat = new Format[NetworkEntity] {
-  //   def writes(entity: NetworkEntity): JsValue = ???
-  //   def reads(json: JsValue): JsResult[NetworkEntity] = ???
-  // }
+  case class Patch(
+    op: String,
+    path: String,
+    value: JsValue)
 
-  // case class Patch(
-  //   op: String,
-  //   path: String,
-  //   value: Change[NetworkEntity])
+  implicit val patchFormat = Json.format[Patch]
 
-  // implicit val patchFormat = Json.format[Patch]
+  implicit val diffFormat = new Format[Diff] {
+    def writes(diff: Diff): JsValue = {
+      val iPatches = diff.interfaces.map {
+        case Add(iface)    => Patch("add", "interfaces", Json.toJson(iface))
+        case Remove(label) => Patch("remove", "interfaces", JsString(label))
+      }
 
-  implicit val changeInterfaceFormat = new Format[Change[Interface]] {
-    def writes(change: Change[Interface]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[Interface]] = ???
+      val dPatches = diff.dns.map {
+        case Add(record)   => Patch("add", "dns", Json.toJson(record))
+        case Remove(label) => Patch("remove", "dns", JsString(label))
+      }
+
+      val nPatches = diff.natFans.map {
+        case Add(nat)      => Patch("add", "natFans", Json.toJson(nat))
+        case Remove(label) => Patch("remove", "natFans", JsString(label))
+      }
+
+      val tPatches = diff.tunnels.map {
+        case Add(tunnel)   => Patch("add", "tunnels", Json.toJson(tunnel))
+        case Remove(label) => Patch("remove", "tunnels", JsString(label))
+      }
+
+      val allPatches = iPatches ++ dPatches ++ nPatches ++ tPatches
+
+      JsArray(allPatches.map(Json.toJson(_)))
+    }
+
+    def reads(json: JsValue): JsResult[Diff] =
+      json.validate[Seq[Patch]].flatMap { patches: Seq[Patch] =>
+        try {
+          JsSuccess(
+            Diff(
+              patches.collect {
+                case Patch("add", "interfaces", js) =>
+                  js.validate[Interface].map(Add(_)).get
+                case Patch("remove", "interfaces", js) =>
+                  js.validate[String].map(Remove(_)).get
+              },
+              patches.collect {
+                case Patch("add", "dns", js) =>
+                  js.validate[DNS].map(Add(_)).get
+                case Patch("remove", "dns", js) =>
+                  js.validate[String].map(Remove(_)).get
+              },
+              patches.collect {
+                case Patch("add", "natFans", js) =>
+                  js.validate[NATFan].map(Add(_)).get
+                case Patch("remove", "natFans", js) =>
+                  js.validate[String].map(Remove(_)).get
+              },
+              patches.collect {
+                case Patch("add", "tunnels", js) =>
+                  js.validate[Tunnel].map(Add(_)).get
+                case Patch("remove", "tunnels", js) =>
+                  js.validate[String].map(Remove(_)).get
+              }
+            )
+          )
+        }
+        catch {
+          case JsResultException(errors) => JsError(errors)
+        }
+      }
+
   }
-
-  implicit val changeDnsFormat = new Format[Change[DNS]] {
-    def writes(change: Change[DNS]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[DNS]] = ???
-  }
-
-  implicit val changeNatFormat = new Format[Change[NATFan]] {
-    def writes(change: Change[NATFan]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[NATFan]] = ???
-  }
-
-  implicit val changeTunnelFormat = new Format[Change[Tunnel]] {
-    def writes(change: Change[Tunnel]): JsValue = ???
-    def reads(json: JsValue): JsResult[Change[Tunnel]] = ???
-  }
-
-  implicit val diffFormat: Format[Diff] = (
-    (__ \ "interfaces").format[Seq[Change[Interface]]] and
-    (__ \ "dns").format[Seq[Change[DNS]]] and
-    (__ \ "nat").format[Seq[Change[NATFan]]] and
-    (__ \ "tunnels").format[Seq[Change[Tunnel]]]
-  )(Diff.apply(_, _, _, _), unlift(Diff.unapply))
 
   // Doc
 

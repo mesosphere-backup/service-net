@@ -45,6 +45,13 @@ class DocProtocolSpec extends Spec {
       tunnels = Seq(tunnel)
     )
 
+    val diff = Diff(
+      interfaces = Seq(Add(interface), Remove(interface)),
+      dns = Seq(Add(aaaa), Remove(aaaa)),
+      natFans = Seq(Add(natFan), Remove(natFan)),
+      tunnels = Seq(Add(tunnel), Remove(tunnel))
+    )
+
   }
 
   import DocProtocol._
@@ -167,4 +174,11 @@ class DocProtocolSpec extends Spec {
     readResult should equal (doc)
   }
 
+  it should "read and write Diff" in {
+    import Fixture._
+    val json = Json.toJson(diff)
+
+    val readResult = json.as[Diff]
+    readResult should equal (diff)
+  }
 }
