@@ -119,9 +119,9 @@ trait DocProtocol {
         case Remove(label) => Patch("remove", "dns", JsString(label))
       }
 
-      val nPatches = diff.nat.map {
-        case Add(nat)      => Patch("add", "nat", Json.toJson(nat))
-        case Remove(label) => Patch("remove", "nat", JsString(label))
+      val nPatches = diff.natFans.map {
+        case Add(nat)      => Patch("add", "natFans", Json.toJson(nat))
+        case Remove(label) => Patch("remove", "natFans", JsString(label))
       }
 
       val tPatches = diff.tunnels.map {
@@ -134,17 +134,43 @@ trait DocProtocol {
       JsArray(allPatches.map(Json.toJson(_)))
     }
 
-    def reads(json: JsValue): JsResult[Diff] = {
-      json.validate[Seq[Patch]].map { patches: Seq[Patch] =>
-
-        val ifaces: JsResult[Seq[Change[Interface]]] = patches.collect {
-          case Patch(op, "interfaces", js) =>
-            if (op == "add") js.validate[Interface].map(Add(_))
-            else js.validate[String].map(Remove(_))
+    def reads(json: JsValue): JsResult[Diff] =
+      json.validate[Seq[Patch]].flatMap { patches: Seq[Patch] =>
+        try {
+          JsSuccess(
+            Diff(
+              patches.collect {
+                case Patch("add", "interfaces", js) =>
+                  js.validate[Interface].map(Add(_)).get
+                case Patch("remove", "interfaces", js) =>
+                  js.validate[String].map(Remove(_)).get
+              },
+              patches.collect {
+                case Patch("add", "dns", js) =>
+                  js.validate[DNS].map(Add(_)).get
+                case Patch("remove", "dns", js) =>
+                  js.validate[String].map(Remove(_)).get
+              },
+              patches.collect {
+                case Patch("add", "natFans", js) =>
+                  js.validate[NATFan].map(Add(_)).get
+                case Patch("remove", "natFans", js) =>
+                  js.validate[String].map(Remove(_)).get
+              },
+              patches.collect {
+                case Patch("add", "tunnels", js) =>
+                  js.validate[Tunnel].map(Add(_)).get
+                case Patch("remove", "tunnels", js) =>
+                  js.validate[String].map(Remove(_)).get
+              }
+            )
+          )
         }
-        ifaces.map(Diff(ifaces, Nil, Nil, Nil))
+        catch {
+          case JsResultException(errors) => JsError(errors)
+        }
       }
-    }
+
   }
 
   // Doc
