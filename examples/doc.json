@@ -1,0 +1,23 @@
+{
+  "interfaces" : [ {
+    "name" : "my-service",
+    "addrs" : [ "fc75:0:0:0:0:9fb2:0:804" ]
+  } ],
+  "dns" : [ {
+    "label" : "foo.bar",
+    "addrs" : [ "fc75:0:0:0:0:9fb2:0:804" ],
+    "localize" : false
+  } ],
+  "natFans" : [ {
+    "name" : "my-nat",
+    "entrypoint" : "fc75:0:0:0:0:9fb2:0:804",
+    "endpoints" : [ "fc75:0:0:0:0:9fb2:0:804", "fc75:0:0:0:0:9fb2:0:804" ]
+  } ],
+  "tunnels" : [ {
+    "name" : "my-tunnel",
+    "localEnd" : "192.168.1.115",
+    "remoteEnd" : "192.168.1.115",
+    "addr" : "fc75:0:0:0:0:9fb2:0:804",
+    "remoteIPv6Net" : "fc75:0:0:0:0:9fb2:0:804/64"
+  } ]
+}
