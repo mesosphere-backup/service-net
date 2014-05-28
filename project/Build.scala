@@ -56,7 +56,7 @@ object ServiceNetBuild extends Build {
       ) ++
       assemblySettings ++
       graphSettings
-  ).dependsOn(daemon, dsl, http, ns, patch, config, util)
+  ).dependsOn(daemon, dsl, http, ns, patch, config, util, functionalTests)
    .aggregate(daemon, dsl, http, ns, patch, config, util, functionalTests)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
