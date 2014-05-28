@@ -54,7 +54,7 @@ object ServiceNetBuild extends Build {
       assemblySettings ++
       graphSettings
   ).dependsOn(daemon, dsl, http, ns, patch, config, util)
-   .aggregate(daemon, dsl, http, ns, patch, config, util)
+   .aggregate(daemon, dsl, http, ns, patch, config, util, functionalTests)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -117,6 +117,18 @@ object ServiceNetBuild extends Build {
       )
     )
   )
+
+  lazy val functionalTests = Project(
+    id = subproject("functional-tests"),
+    base = file("functional-tests"),
+    settings = commonSettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
+        "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
+        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION
+      )
+    )
+  ).dependsOn(dsl, util)
 
   //////////////////////////////////////////////////////////////////////////////
   // SHARED SETTINGS
