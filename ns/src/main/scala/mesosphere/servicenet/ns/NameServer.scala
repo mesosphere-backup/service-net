@@ -53,10 +53,11 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
     new DNS.SimpleResolver(servers(0))
   }
 
-  def resolve(query: dns4s.Message): Option[dns4s.Message] =
+  def resolve(query: dns4s.Message): Option[dns4s.Message] = {
+    def fmt(s: String) = Formatter.format(query) + " // " + s
     query match {
       case Query(_) ~ Questions(QName(name) ~ TypeAAAA() :: Nil) =>
-        log info s"$name Processing AAAA query"
+        log info fmt("Resolving")
         val answers: Seq[RR] = forward.getOrElse(name, Nil).collect {
           case r: AAAA => r.addrs filter {
             address => !r.localize || config.instanceSubnet.contains(address)
@@ -77,19 +78,19 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
 
       // This case is here to speed up the common A, then AAAA query pattern.
       case Query(_) ~ Questions(QName(name) ~ TypeA() :: Nil) =>
-        log info s"$name Processing A query"
+        log info fmt("Resolving")
         val matchingAAAA: Seq[AAAA] = forward.getOrElse(name, Nil).collect {
           case r: AAAA => r
         }
         if (matchingAAAA.nonEmpty) {
-          log info s"$name Returning NXDOMAIN for A to trigger AAAA"
+          log info fmt("Returning NXDOMAIN for A to trigger AAAA")
           Some(Response ~ NameError ~ Questions(query.question: _*) ~ Answers())
         }
         else
           None
 
       case Query(_) ~ Questions(QName(name) ~ TypePTR() :: Nil) =>
-        log info s"$name Processing PTR query"
+        log info fmt("Resolving")
         reverse.get(name).map { dns =>
           val answer: RR = RR(
             `class` = RR.`classIN`,
@@ -101,11 +102,15 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
           Response ~ Questions(query.question: _*) ~ Answers(answer)
         }
 
-      case _ => None
+      case _ =>
+        log debug fmt("Unhandled record type")
+        None
     }
+  }
 
   def delegate(query: dns4s.Message): Option[dns4s.Message] =
     Try {
+      def fmt(s: String) = Formatter.format(query) + " // " + s
       val resolverAddress: InetSocketAddress = try {
         val f: Field = underlying.getClass().getDeclaredField("address")
         f.setAccessible(true)
@@ -121,15 +126,12 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
         val p = resolverAddress.getPort
         if (p == 53) "" else ":" + p.toString
       }
-      val name: String = query match {
-        case Query(_) ~ Questions(QName(name)) => name
-      }
-      log info s"$name Delegating to $formattedResolver"
+      log info fmt(s"Delegating to $formattedResolver")
       val buffer: dns4s.MessageBuffer = query.apply().flipped
       val msg = new DNS.Message(buffer.getBytes(buffer.remaining).toArray)
-      log debug s"$name Sending message to upstream name server:\n$msg"
+      log debug fmt(s"Sending message to upstream name server:\n$msg")
       val response = underlying send msg
-      log debug s"$name Received response from upstream name server:\n$response"
+      log debug fmt(s"Received response from upstream name server:\n$response")
       toDns4s(response)
     }.toOption
 
@@ -151,10 +153,11 @@ class NameServer()(implicit val config: Config = Config()) extends Logging {
 
   class NameServerActor extends Actor {
     override def receive = {
-      case msg: dns4s.Message =>
-        resolve(msg) orElse delegate(msg) match {
+      case query: dns4s.Message =>
+        def fmt(s: String) = Formatter.format(query) + " // " + s
+        resolve(query) orElse delegate(query) match {
           case Some(answer) => sender ! answer
-          case None         => log debug s"No result for:\n$msg"
+          case None         => log debug fmt("No result")
         }
     }
   }
