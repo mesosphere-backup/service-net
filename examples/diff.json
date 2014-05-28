@@ -1,0 +1,50 @@
+[ {
+  "op" : "add",
+  "path" : "interfaces",
+  "value" : {
+    "name" : "my-service",
+    "addrs" : [ "fc75:0:0:0:0:9fb2:0:804" ]
+  }
+}, {
+  "op" : "remove",
+  "path" : "interfaces",
+  "value" : "my-service"
+}, {
+  "op" : "add",
+  "path" : "dns",
+  "value" : {
+    "label" : "foo.bar",
+    "addrs" : [ "fc75:0:0:0:0:9fb2:0:804" ],
+    "localize" : false
+  }
+}, {
+  "op" : "remove",
+  "path" : "dns",
+  "value" : "foo.bar"
+}, {
+  "op" : "add",
+  "path" : "natFans",
+  "value" : {
+    "name" : "my-nat",
+    "entrypoint" : "fc75:0:0:0:0:9fb2:0:804",
+    "endpoints" : [ "fc75:0:0:0:0:9fb2:0:804", "fc75:0:0:0:0:9fb2:0:804" ]
+  }
+}, {
+  "op" : "remove",
+  "path" : "natFans",
+  "value" : "my-nat"
+}, {
+  "op" : "add",
+  "path" : "tunnels",
+  "value" : {
+    "name" : "my-tunnel",
+    "localEnd" : "192.168.1.115",
+    "remoteEnd" : "192.168.1.115",
+    "addr" : "fc75:0:0:0:0:9fb2:0:804",
+    "remoteIPv6Net" : "fc75:0:0:0:0:9fb2:0:804/64"
+  }
+}, {
+  "op" : "remove",
+  "path" : "tunnels",
+  "value" : "my-tunnel"
+} ]

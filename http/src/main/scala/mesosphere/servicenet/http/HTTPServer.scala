@@ -73,7 +73,20 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
           }
 
         case PATCH(_) =>
-          MethodNotAllowed ~> ResponseString("Must be GET or PUT")
+          Json.parse(Body.bytes(req)).validate[Diff] match {
+            case success: JsSuccess[Diff] =>
+              update(success.get)
+              ResponseString("OK")
+            case error: JsError =>
+              BadRequest ~>
+                ResponseHeader("Content-Type", Set("application/json")) ~>
+                ResponseString(JsError.toFlatJson(error).toString)
+          }
+
+        case DELETE(_) =>
+          update(Doc())
+          ResponseString("OK")
+
       }
 
       case _ => NotFound ~> ResponseString("Not found")
