@@ -1,10 +1,10 @@
 package mesosphere.servicenet.config
 
+import java.io.File
 import java.net.Inet4Address
 
 import mesosphere.servicenet.dsl.Inet6Subnet
 import mesosphere.servicenet.util._
-import java.io.File
 
 /**
   * The configuration for a service net instance can be provided with Java
