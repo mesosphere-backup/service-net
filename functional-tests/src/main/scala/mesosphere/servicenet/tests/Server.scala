@@ -7,8 +7,8 @@ import mesosphere.servicenet.util.Properties
 
 object Server extends App {
 
-  private val addr = Properties.underlying.getOrElse("test.server.connect.addr", "::1")
-  private val port = Properties.underlying.getOrElse("test.server.connect.port", "9797").toInt
+  private val addr = Properties.underlying.getOrElse("http.ip", "::1")
+  private val port = Properties.underlying.getOrElse("http.port", "9797").toInt
 
   object Route extends unfiltered.filter.Plan {
     def intent = {
