@@ -34,6 +34,8 @@ object ServiceNetBuild extends Build {
   val UNFILTERED_VERSION      = "0.7.1"
   val TYPESAFE_CONFIG_VERSION = "1.2.0"
   val SCALATEST_VERSION       = "2.1.5"
+  val FINAGLE_VERSION         = "6.16.0"
+  val SCALA_URI_VERSION       = "0.3.6"
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -125,7 +127,11 @@ object ServiceNetBuild extends Build {
       libraryDependencies ++= Seq(
         "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
         "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
-        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION
+        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION,
+
+        "com.twitter"       %% "finagle-http"      % FINAGLE_VERSION,
+        "com.twitter"       %% "finagle-stats"     % FINAGLE_VERSION,
+        "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION
       )
     )
   ).dependsOn(dsl, util)
@@ -144,6 +150,7 @@ object ServiceNetBuild extends Build {
 
     resolvers ++= Seq(
       "Mesosphere Repo"     at "http://downloads.mesosphere.io/maven",
+      "Twitter"             at "http://maven.twttr.com/",
       "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
 
