@@ -3,11 +3,12 @@ package mesosphere.servicenet.tests
 import unfiltered.request.{ GET, Seg, Path }
 import unfiltered.response.{ ResponseString, ResponseHeader }
 import unfiltered.jetty.Http
+import mesosphere.servicenet.util.Properties
 
 object Server extends App {
 
-  private val addr = "::1"
-  private val port = 9797
+  private val addr = Properties.underlying.getOrElse("test.server.connect.addr", "::1")
+  private val port = Properties.underlying.getOrElse("test.server.connect.port", "9797").toInt
 
   object Route extends unfiltered.filter.Plan {
     def intent = {
