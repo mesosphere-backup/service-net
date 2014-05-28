@@ -40,6 +40,13 @@ import mesosphere.servicenet.util._
   *                   not particularly useful since all virtual interfaces and
   *                   firewalls will by default disappear). (Properties:
   *                   `svcnet.state` or `mesosphere.servicenet.state`)
+  * @param logLevel The level at which to log. The default is INFO.
+  *                 (Properties: `svcnet.log.level` and
+  *                  `mesosphere.servicenet.log.level`)
+  * @param logTimestamp The length of log timestamp to use: `long` (date and
+  *                     time), `short` (just time) and `none`. (Properties:
+  *                     `svcnet.log.timestamp` and
+  *                     `mesosphere.servicenet.log.level`)
   * @param nsPort The port on which to serve DNS traffic. (Properties:
   *               `ns.port` or `svcnet.ns.port` or
   *               `mesosphere.servicenet.ns.port`)
