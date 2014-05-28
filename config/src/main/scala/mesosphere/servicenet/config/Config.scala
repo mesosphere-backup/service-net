@@ -53,7 +53,7 @@ case class Config(localIPv4: Inet4Address,
                   rehearsal: Boolean,
                   stateStore: String,
                   logLevel: String,
-                  logTimestamp: Boolean,
+                  logTimestamp: String,
                   nsPort: Int,
                   httpPort: Int) extends Logging {
   val propertyLines: Seq[String] = Seq(
@@ -157,7 +157,7 @@ object Config extends Logging {
       stateStore = properties.getOrElse("state", "/tmp/svcnet.json"),
       logLevel = properties.getOrElse("log.level", "INFO"),
       logTimestamp = properties.get("log.timestamp").map(_.toBoolean)
-        .getOrElse(false),
+        .getOrElse("short"),
       nsPort = properties.get("ns.port").map(_.toInt).getOrElse(53),
       httpPort = properties.get("http.port").map(_.toInt).getOrElse(9000)
     )
