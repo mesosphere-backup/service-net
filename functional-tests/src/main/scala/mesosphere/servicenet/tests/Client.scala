@@ -2,32 +2,31 @@ package mesosphere.servicenet.tests
 
 import com.github.theon.uri.Uri._
 import com.twitter.finagle.builder.ClientBuilder
-import com.twitter.finagle.http.{RequestBuilder, Http}
+import com.twitter.finagle.http.{ RequestBuilder, Http }
 import java.net.InetSocketAddress
 import com.twitter.conversions.time.longToTimeableNumber
-import com.twitter.finagle.{Service, SimpleFilter}
-import org.jboss.netty.handler.codec.http.{HttpResponse, HttpRequest}
+import com.twitter.finagle.{ Service, SimpleFilter }
+import org.jboss.netty.handler.codec.http.{ HttpResponse, HttpRequest }
 import org.jboss.netty.handler.codec.http.HttpResponseStatus._
-import com.twitter.util.{Stopwatch, Await, Future}
+import com.twitter.util.{ Stopwatch, Await, Future }
 import com.github.theon.uri.Uri
-import mesosphere.servicenet.util.Properties
+import mesosphere.servicenet.util.{ Logging, Properties }
 
 case class TestRequestResponse(
   requestNumber: Int,
-  responseServerIp: String
-)
+  responseServerIp: String)
 
 class Client {
 
   /**
-   * Convert HTTP 4xx and 5xx class responses into Exceptions.
-   */
+    * Convert HTTP 4xx and 5xx class responses into Exceptions.
+    */
   class HandleErrors extends SimpleFilter[HttpRequest, HttpResponse] {
     def apply(request: HttpRequest, service: Service[HttpRequest, HttpResponse]) = {
       service(request) flatMap { response =>
         response.getStatus match {
           case OK => Future.value(response)
-          case _ => Future.exception(new Exception(response.getStatus.getReasonPhrase))
+          case _  => Future.exception(new Exception(response.getStatus.getReasonPhrase))
         }
       }
     }
@@ -59,29 +58,37 @@ class Client {
   }
 
   def ping(requestNumber: Int = 0) = {
-    client(get("/ping" ? ("requestNumber" -> requestNumber))) flatMap { case r =>
-      Future.value(new TestRequestResponse(requestNumber, r.headers().get("ServerIP")))
+    client(get("/ping" ? ("requestNumber" -> requestNumber))) flatMap {
+      case response =>
+        Future.value(new TestRequestResponse(requestNumber, response.headers().get("ServerIP")))
     }
   }
 }
 
-object Client extends App {
+object Client extends App with Logging {
   private val client: Client = new Client()
 
+  val requestCount = 10000
+
+  log.info("submitting {} requests", requestCount)
   val stopwatch = Stopwatch.start()
-  val f = Future.collect(
-    (0 to 10000) map {
-      i => client.ping(i)
-    }
-  ) onFailure { case t: Throwable =>
-    println(s"t = $t")
+  val f = {
+    Future.collect(
+      0 to requestCount map {
+        i => client.ping(i)
+      }
+    ) onFailure {
+        case t: Throwable =>
+          println(s"t = $t")
+      }
   }
 
   val resp = Await.result(f)
-  println(s"stopwatch() = ${stopwatch()}")
+  log.info("all {} requests complete in: {}", requestCount, stopwatch())
 
-  resp.foreach { case testResponse =>
-    assert(testResponse.responseServerIp == "::1")
+  resp.foreach {
+    case testResponse =>
+      assert(testResponse.responseServerIp == "::1")
   }
 
   System.exit(0)
