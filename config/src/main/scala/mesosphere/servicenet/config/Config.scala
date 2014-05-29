@@ -163,8 +163,7 @@ object Config extends Logging {
       rehearsal = properties.get("rehearsal").map(_.toBoolean).getOrElse(false),
       stateStore = properties.getOrElse("state", "/tmp/svcnet.json"),
       logLevel = properties.getOrElse("log.level", "INFO"),
-      logTimestamp = properties.get("log.timestamp").map(_.toBoolean)
-        .getOrElse("short"),
+      logTimestamp = properties.getOrElse("log.timestamp", "short"),
       nsPort = properties.get("ns.port").map(_.toInt).getOrElse(53),
       httpPort = properties.get("http.port").map(_.toInt).getOrElse(9000)
     )
