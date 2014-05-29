@@ -8,7 +8,7 @@ import com.twitter.conversions.time.longToTimeableNumber
 import com.twitter.finagle.{ Service, SimpleFilter }
 import org.jboss.netty.handler.codec.http.{ HttpResponse, HttpRequest }
 import org.jboss.netty.handler.codec.http.HttpResponseStatus._
-import com.twitter.util.{ Stopwatch, Await, Future }
+import com.twitter.util.Future
 import com.github.theon.uri.Uri
 import mesosphere.servicenet.util.{ Logging, Properties }
 
@@ -16,27 +16,31 @@ case class TestRequestResponse(
   requestNumber: Int,
   responseServerIp: String)
 
-class Client {
+class Client(hostname: String, port: Int) extends Logging {
 
   /**
     * Convert HTTP 4xx and 5xx class responses into Exceptions.
     */
   class HandleErrors extends SimpleFilter[HttpRequest, HttpResponse] {
-    def apply(request: HttpRequest, service: Service[HttpRequest, HttpResponse]) = {
+    def apply(
+      request: HttpRequest,
+      service: Service[HttpRequest, HttpResponse]) = {
       service(request) flatMap { response =>
         response.getStatus match {
           case OK => Future.value(response)
-          case _  => Future.exception(new Exception(response.getStatus.getReasonPhrase))
+          case _ => Future.exception(
+            new Exception(response.getStatus.getReasonPhrase)
+          )
         }
       }
     }
   }
 
-  private val hostname = Properties.underlying.getOrElse("test.client.connect.hostname", "::1")
-  private val port = Properties.underlying.getOrElse("test.client.connect.port", "9797").toInt
+  val address = new InetSocketAddress(hostname, port)
+
   lazy val builder = ClientBuilder()
     .codec(Http())
-    .hosts(new InetSocketAddress(hostname, port))
+    .hosts(address)
     .tcpConnectTimeout(2.seconds)
     .requestTimeout(15.seconds)
     .hostConnectionLimit(30)
@@ -52,44 +56,89 @@ class Client {
   }
 
   private[this] def get(uri: Uri): HttpRequest = {
+    val uriString = s"http://$hostname:$port/${uri.toString()}"
     RequestBuilder()
-      .url(s"http://[$hostname]:$port/${uri.toString()}".replaceAll("(?<!:)//", "/"))
+      .url(uriString.replaceAll("(?<!:)//", "/"))
       .buildGet()
   }
 
   def ping(requestNumber: Int = 0) = {
     client(get("/ping" ? ("requestNumber" -> requestNumber))) flatMap {
       case response =>
-        Future.value(new TestRequestResponse(requestNumber, response.headers().get("ServerIP")))
+        Future.value(
+          new TestRequestResponse(
+            requestNumber,
+            response.headers().get("ServerIP")
+          )
+        )
     }
   }
 }
 
 object Client extends App with Logging {
-  private val client: Client = new Client()
 
-  val requestCount = 10000
-
-  log.info("submitting {} requests", requestCount)
-  val stopwatch = Stopwatch.start()
-  val f = {
-    Future.collect(
-      0 to requestCount map {
-        i => client.ping(i)
-      }
-    ) onFailure {
-        case t: Throwable =>
-          println(s"t = $t")
-      }
+  val client: Client = args(0).split(":") match {
+    case Array(hostname, port) => new Client(hostname, port.toInt)
+    case Array(hostname)       => new Client(hostname, 80)
+    case _ => throw new IllegalArgumentException(
+      "Missing host arg.\n Usage: Client <hostname>[:port]"
+    )
   }
 
-  val resp = Await.result(f)
-  log.info("all {} requests complete in: {}", requestCount, stopwatch())
+  val requestCount = Properties.underlying.getOrElse(
+    "test.client.balanceTest.request.count",
+    "10000"
+  ).toInt
+  val expectBalanceFactor = Properties.underlying.getOrElse(
+    "test.client.balanceTest.expect.balanceFactor",
+    "100.0"
+  ).toDouble
+  val expectBalanceFactorDelta = Properties.underlying.getOrElse(
+    "test.client.balanceTest.expect.balanceFactor.delta",
+    "0.1"
+  ).toDouble
 
-  resp.foreach {
-    case testResponse =>
-      assert(testResponse.responseServerIp == "::1")
+  val testResults = new BalanceFactorTest(client).runBalanceFactorTest(
+    requestCount,
+    expectBalanceFactor,
+    expectBalanceFactorDelta
+  )
+
+  val dash80 =
+    "----------------------------------------" +
+      "----------------------------------------"
+
+  log.info("Results:")
+  log.info(dash80)
+  testResults.allResults.foreach {
+    case result =>
+      log.info(s" *  ${result.serverIp} -> ${result.percentage}")
+  }
+  log.info(dash80)
+
+  val expectReportString = s"$expectBalanceFactor(+/-$expectBalanceFactorDelta)"
+  if (testResults.unbalancedResults.nonEmpty) {
+    log.error("Unbalanced:")
+    log.error(dash80)
+    testResults.unbalancedResults.foreach {
+      case result =>
+        val message =
+          s" *  ${result.serverIp} -> " +
+            s"expected: $expectReportString, " +
+            s"actual: ${result.percentage}"
+        log.error(message)
+    }
+    log.error(dash80)
+  }
+  else {
+    log.info(s"Balanced at $expectReportString")
   }
 
-  System.exit(0)
+  println(JacksonWrapper.serialize(testResults))
+  if (testResults.pass) {
+    System.exit(0)
+  }
+  else {
+    System.exit(5)
+  }
 }
