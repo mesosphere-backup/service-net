@@ -5,24 +5,21 @@ import java.net.InetSocketAddress
 
 import mesosphere.servicenet.util.Logging
 
-case class BalanceFactorTestResults(
-  clientConnection: InetSocketAddress,
-  requestCount: Int,
-  expectedBalanceFactor: Double,
-  expectedBalanceFactorDelta: Double,
-  durationMillis: Long,
-  pass: Boolean,
-  failureException: Option[Throwable],
-  allResults: List[ServerRequestSummary],
-  unbalancedResults: List[ServerRequestSummary])
+case class BalanceFactorTestResults(clientConnection: InetSocketAddress,
+                                    requestCount: Int,
+                                    expectedBalanceFactor: Double,
+                                    expectedBalanceFactorDelta: Double,
+                                    durationMillis: Long,
+                                    pass: Boolean,
+                                    failureException: Option[Throwable],
+                                    allResults: List[ServerRequestSummary],
+                                    unbalanced: List[ServerRequestSummary])
 
-case class ServerRequestSummary(
-  serverIp: String,
-  numRequests: Int,
-  percentage: Double)
+case class ServerRequestSummary(serverIp: String,
+                                numRequests: Int,
+                                percentage: Double)
 
 class BalanceFactorTest(client: Client) extends Logging {
-
   def runBalanceFactorTest(
     requestCount: Int,
     expectBalanceFactor: Double,
@@ -79,8 +76,7 @@ class BalanceFactorTest(client: Client) extends Logging {
       pass = unbalanced.isEmpty,
       failureException = possibleError,
       allResults = results,
-      unbalancedResults = unbalanced
+      unbalanced = unbalanced
     )
   }
-
 }
