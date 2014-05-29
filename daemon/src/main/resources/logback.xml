@@ -1,32 +1,26 @@
 <configuration>
   <appender name="long" class="ch.qos.logback.core.ConsoleAppender">
-    <!-- encoders are assigned the type
-         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
     <encoder>
       <pattern>
-        %d{yyyy-dd-MM HH:mm:ss.SSS, UTC} [%thread] %-5level %logger - %msg%n
+        %d{yyyy-dd-MM HH:mm:ss.SSS, UTC} [%thread] %-5level %logger %msg%n
       </pattern>
     </encoder>
     <target>System.err</target>
   </appender>
 
   <appender name="short" class="ch.qos.logback.core.ConsoleAppender">
-    <!-- encoders are assigned the type
-         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
     <encoder>
       <pattern>
-        %d{HH:mm:ss.SSS, UTC} [%thread] %-5level %logger - %msg%n
+        %d{HH:mm:ss.SSS, UTC} [%thread] %-5level %logger %msg%n
       </pattern>
     </encoder>
     <target>System.err</target>
   </appender>
 
   <appender name="none" class="ch.qos.logback.core.ConsoleAppender">
-    <!-- encoders are assigned the type
-         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
     <encoder>
       <pattern>
-        [%thread] %level %logger{36} - %msg%n
+        [%thread] %level %logger{36} %msg%n
       </pattern>
     </encoder>
     <target>System.err</target>
