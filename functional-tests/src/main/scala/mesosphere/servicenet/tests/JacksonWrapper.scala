@@ -1,19 +1,21 @@
 package mesosphere.servicenet.tests
 
+import java.io.StringWriter
+import java.lang.reflect.{ ParameterizedType, Type }
+
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.core.`type`.TypeReference
-import java.lang.reflect.{ ParameterizedType, Type }
 import com.fasterxml.jackson.databind.ObjectMapper
 
 object JacksonWrapper {
   val mapper = {
     new ObjectMapper()
-      .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
       .registerModule(DefaultScalaModule)
   }
 
   def serialize(value: Any): String = {
-    import java.io.StringWriter
     val writer = new StringWriter()
     mapper.writeValue(writer, value)
     writer.toString

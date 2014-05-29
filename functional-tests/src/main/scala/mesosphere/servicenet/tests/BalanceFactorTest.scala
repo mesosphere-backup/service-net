@@ -1,7 +1,8 @@
 package mesosphere.servicenet.tests
 
-import java.net.InetSocketAddress
 import com.twitter.util.{ Await, Future, Stopwatch }
+import java.net.InetSocketAddress
+
 import mesosphere.servicenet.util.Logging
 
 case class BalanceFactorTestResults(

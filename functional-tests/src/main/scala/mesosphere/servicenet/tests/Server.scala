@@ -1,8 +1,9 @@
 package mesosphere.servicenet.tests
 
+import unfiltered.jetty.Http
 import unfiltered.request.{ GET, Seg, Path }
 import unfiltered.response.{ ResponseString, ResponseHeader }
-import unfiltered.jetty.Http
+
 import mesosphere.servicenet.util.Properties
 
 object Server extends App {

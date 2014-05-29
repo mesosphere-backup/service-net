@@ -1,20 +1,21 @@
 package mesosphere.servicenet.tests
 
+import java.net.InetSocketAddress
+
 import com.github.theon.uri.Uri._
+import com.github.theon.uri.Uri
+import com.twitter.conversions.time.longToTimeableNumber
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.http.{ RequestBuilder, Http }
-import java.net.InetSocketAddress
-import com.twitter.conversions.time.longToTimeableNumber
 import com.twitter.finagle.{ Service, SimpleFilter }
+import com.twitter.util.Future
 import org.jboss.netty.handler.codec.http.{ HttpResponse, HttpRequest }
 import org.jboss.netty.handler.codec.http.HttpResponseStatus._
-import com.twitter.util.Future
-import com.github.theon.uri.Uri
+
 import mesosphere.servicenet.util.{ Logging, Properties }
 
-case class TestRequestResponse(
-  requestNumber: Int,
-  responseServerIp: String)
+case class TestRequestResponse(requestNumber: Int,
+                               responseServerIp: String)
 
 class Client(hostname: String, port: Int) extends Logging {
 
