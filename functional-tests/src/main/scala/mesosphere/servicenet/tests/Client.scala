@@ -87,15 +87,15 @@ object Client extends App with Logging {
   }
 
   val requestCount = Properties.underlying.getOrElse(
-    "test.client.balanceTest.request.count",
+    "svcnet.test.requests",
     "10000"
   ).toInt
   val expectBalanceFactor = Properties.underlying.getOrElse(
-    "test.client.balanceTest.expect.balanceFactor",
+    "svcnet.test.balance.factor",
     "100.0"
   ).toDouble
   val expectBalanceFactorDelta = Properties.underlying.getOrElse(
-    "test.client.balanceTest.expect.balanceFactor.delta",
+    "svcnet.test.balance.variance",
     "0.1"
   ).toDouble
 
@@ -118,10 +118,10 @@ object Client extends App with Logging {
   log.info(dash80)
 
   val expectReportString = s"$expectBalanceFactor(+/-$expectBalanceFactorDelta)"
-  if (testResults.unbalancedResults.nonEmpty) {
+  if (testResults.unbalanced.nonEmpty) {
     log.error("Unbalanced:")
     log.error(dash80)
-    testResults.unbalancedResults.foreach {
+    testResults.unbalanced.foreach {
       case result =>
         val message =
           s" *  ${result.serverIp} -> " +
