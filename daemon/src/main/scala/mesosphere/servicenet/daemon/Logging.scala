@@ -5,17 +5,11 @@ import org.slf4j.LoggerFactory
 
 import mesosphere.servicenet.config.Config
 
-case class Logging()(implicit config: Config = Config()) {
-  def configure() {
+object Logging {
+  def configure()(implicit config: Config = Config()) {
     val rootLogger = LoggerFactory
       .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
       .asInstanceOf[ch.qos.logback.classic.Logger]
     rootLogger.setLevel(Level.toLevel(config.logLevel))
-  }
-}
-
-object Logging {
-  def configure() {
-    Logging().configure()
   }
 }
