@@ -134,7 +134,7 @@ object ServiceNetBuild extends Build {
         "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION
       )
     )
-  ).dependsOn(dsl, util)
+  ).dependsOn(dsl, util, http)
 
   //////////////////////////////////////////////////////////////////////////////
   // SHARED SETTINGS
