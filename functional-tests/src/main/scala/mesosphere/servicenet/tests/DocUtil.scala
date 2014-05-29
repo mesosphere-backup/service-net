@@ -1,9 +1,10 @@
 package mesosphere.servicenet.tests
 
-import mesosphere.servicenet.dsl._
-import mesosphere.servicenet.util.InetAddressHelper.{ipv4, ipv6}
 import play.api.libs.json.Json
+
+import mesosphere.servicenet.dsl._
 import mesosphere.servicenet.http.json.DocProtocol
+import mesosphere.servicenet.util.InetAddressHelper.{ ipv4, ipv6 }
 
 class DocUtil {
 

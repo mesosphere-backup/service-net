@@ -1,8 +1,9 @@
 package mesosphere.servicenet.tests
 
-import mesosphere.servicenet.util.{Logging, IO}
 import java.io.File
-import scala.sys.process.{Process, ProcessLogger}
+import scala.sys.process.{ Process, ProcessLogger }
+
+import mesosphere.servicenet.util.{ Logging, IO }
 
 object TestToolsInvoker extends Logging {
   lazy val script: Array[Byte] =
