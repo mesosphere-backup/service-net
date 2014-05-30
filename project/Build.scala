@@ -111,6 +111,9 @@ object ServiceNetBuild extends Build {
     id = subproject("util"),
     base = file("util"),
     settings = commonSettings ++ Seq(
+
+      publishArtifact in Test := true,
+
       libraryDependencies ++= Seq(
         "ch.qos.logback" % "logback-core"    % LOGBACK_VERSION,
         "ch.qos.logback" % "logback-classic" % LOGBACK_VERSION,
