@@ -82,14 +82,13 @@ object Diff {
     * all-of-a-piece.
     */
   def patch[T <: NetworkEntity](changes: Seq[Change[T]],
-                                entities: Seq[T]): Seq[T] = {
-    val removes: Seq[String] = for (Remove(name) <- changes) yield name
-    val adds: Map[String, T] =
-      (for (Add(e) <- changes) yield (e.name(), e)).toMap
-    val original: Map[String, T] = entities.map((e) => (e.name(), e)).toMap
-
-    DNSNameSort.sortEntities((original -- removes ++ adds).values.toSeq)
-  }
+                                entities: Seq[T]): Seq[T] =
+    DNSNameSort.sortEntities(
+      changes.foldLeft(entities.toVector) {
+        case (result, Remove(name)) => result.filterNot(_.name == name)
+        case (result, Add(entity))  => result :+ entity
+      }
+    )
 
   def summary[T <: NetworkEntity](changes: Seq[Change[T]]): String = {
     val removes: Set[String] = (for (Remove(name) <- changes) yield name).toSet
