@@ -77,35 +77,46 @@ class Client(hostname: String, port: Int) extends Logging {
   }
 }
 
-object Client extends App with Logging with BalanceFactorTestFormatters {
-
-  val client: Client = args(0).split(":") match {
-    case Array(hostname, port) => new Client(hostname, port.toInt)
-    case Array(hostname)       => new Client(hostname, 80)
-    case _ => throw new IllegalArgumentException(
-      "Missing host arg.\n Usage: Client <hostname>[:port]"
-    )
+object Client extends Logging with BalanceFactorTestFormatters {
+  def usage() = {
+    System.err.println("Missing host arg.\n Usage: Client <hostname>[:port]")
+    System.exit(2)
   }
 
-  val requestCount = Properties.underlying.getOrElse(
-    "svcnet.test.requests",
-    "10000"
-  ).toInt
-  val balanceVariance = Properties.underlying.getOrElse(
-    "svcnet.test.balance.variance",
-    "0.05"
-  ).toDouble
+  def main(args: Array[String]) = {
+    val hostnamePort = {
+      if (args.length == 0) None
+      args(0).split(":") match {
+        case Array(hostname, port) => Some(hostname -> port.toInt)
+        case Array(hostname)       => Some(hostname -> 80)
+        case _                     => None
+      }
+    }
 
-  val results = new BalanceFactorTest(client).runBalanceFactorTest(
-    requestCount,
-    balanceVariance
-  )
+    val requestCount = Properties.underlying.getOrElse(
+      "svcnet.test.requests",
+      "100"
+    ).toInt
+    val balanceVariance = Properties.underlying.getOrElse(
+      "svcnet.test.balance.variance",
+      "0.05"
+    ).toDouble
 
-  private val address = client.address
-  log.info(s"svcnet.test.requests = $requestCount")
-  log.info(s"svcnet.test.balance.variance = $balanceVariance")
-  log.info(s"clientConnection = ${address.getHostName}:${address.getPort}")
+    hostnamePort match {
+      case Some(t) =>
+        val (hostname, port) = t
+        log.info(s"svcnet.test.requests = $requestCount")
+        log.info(s"svcnet.test.balance.variance = $balanceVariance")
+        log.info(s"clientConnection = $hostname:$port")
 
-  println(Json.prettyPrint(Json.toJson(results)))
-  if (results.pass) System.exit(0) else System.exit(5)
+        val client = new Client(hostname, port)
+        val results = new BalanceFactorTest(client).runBalanceFactorTest(
+          requestCount,
+          balanceVariance
+        )
+        println(Json.prettyPrint(Json.toJson(results)))
+        if (results.pass) System.exit(0) else System.exit(5)
+      case _ => usage()
+    }
+  }
 }

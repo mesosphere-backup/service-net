@@ -56,8 +56,8 @@ object ServiceNetBuild extends Build {
       ) ++
       assemblySettings ++
       graphSettings
-  ).dependsOn(daemon, dsl, http, ns, patch, config, util, functionalTests)
-   .aggregate(daemon, dsl, http, ns, patch, config, util, functionalTests)
+  ).dependsOn(daemon, dsl, http, ns, patch, config, util)
+   .aggregate(daemon, dsl, http, ns, patch, config, util, tests)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -121,20 +121,30 @@ object ServiceNetBuild extends Build {
     )
   )
 
-  lazy val functionalTests = Project(
-    id = subproject("functional-tests"),
-    base = file("functional-tests"),
-    settings = commonSettings ++ Seq(
-      libraryDependencies ++= Seq(
-        "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
-        "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
-        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION,
+  lazy val tests = Project(
+    id = subproject("tests"),
+    base = file("tests"),
+    settings = commonSettings ++
+      Seq(
+        aggregate in update := false,
+        mainClass in (Compile, packageBin) :=
+          Some("mesosphere.servicenet.tests.Test"),
+        mainClass in (Compile, run) :=
+          Some("mesosphere.servicenet.tests.Test")
+      ) ++
+      assemblySettings ++
+      graphSettings ++
+      Seq(
+        libraryDependencies ++= Seq(
+          "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
+          "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
+          "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION,
 
-        "com.twitter"       %% "finagle-http"      % FINAGLE_VERSION,
-        "com.twitter"       %% "finagle-stats"     % FINAGLE_VERSION,
-        "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION
+          "com.twitter"       %% "finagle-http"      % FINAGLE_VERSION,
+          "com.twitter"       %% "finagle-stats"     % FINAGLE_VERSION,
+          "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION
+        )
       )
-    )
   ).dependsOn(dsl, util, http)
 
   //////////////////////////////////////////////////////////////////////////////
