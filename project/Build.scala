@@ -5,6 +5,8 @@ import net.virtualvoid.sbt.graph.Plugin.graphSettings
 import sbtassembly.Plugin._
 import sbtassembly.Plugin.AssemblyKeys._
 import com.typesafe.sbt.SbtScalariform._
+import ohnosequences.sbt.SbtS3Resolver.S3Resolver
+import ohnosequences.sbt.SbtS3Resolver.{ s3, s3resolver }
 import scalariform.formatter.preferences._
 import sbtunidoc.Plugin._
 
@@ -123,7 +125,11 @@ object ServiceNetBuild extends Build {
   //////////////////////////////////////////////////////////////////////////////
 
   lazy val commonSettings =
-    Project.defaultSettings ++ basicSettings ++ formatSettings ++ unidocSettings
+    Project.defaultSettings ++
+    basicSettings ++
+    formatSettings ++
+    unidocSettings ++
+    publishSettings
 
   lazy val basicSettings = Seq(
     version := PROJECT_VERSION,
@@ -153,6 +159,13 @@ object ServiceNetBuild extends Build {
     ),
 
     fork in Test := false
+  )
+
+  lazy val publishSettings = S3Resolver.defaults ++ Seq(
+    publishTo := Some(s3resolver.value(
+      "Mesosphere Public Repo",
+      s3("downloads.mesosphere.io/maven")
+    ))
   )
 
   lazy val formatSettings = scalariformSettings ++ Seq(
