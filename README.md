@@ -6,6 +6,12 @@
 
 TODO
 
+## Scaladoc
+
+```bash
+$ sbt unidoc && open target/scala-2.10/unidoc/index.html
+```
+
 ## Goals
 
 - Make X easier
