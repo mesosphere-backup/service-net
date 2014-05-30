@@ -34,7 +34,6 @@ object ServiceNetBuild extends Build {
   val PLAY_JSON_VERSION       = "2.2.3"
   val SLF4J_VERSION           = "1.7.6"
   val UNFILTERED_VERSION      = "0.7.1"
-  val TYPESAFE_CONFIG_VERSION = "1.2.0"
   val SCALATEST_VERSION       = "2.1.5"
 
 
@@ -142,7 +141,6 @@ object ServiceNetBuild extends Build {
     ),
 
     libraryDependencies ++= Seq(
-      "com.typesafe"   % "config"    % TYPESAFE_CONFIG_VERSION,
       "org.scalatest" %% "scalatest" % SCALATEST_VERSION % "test"
     ),
 
