@@ -3,12 +3,15 @@ package mesosphere.servicenet.tests
 import com.twitter.util.{ Await, Future, Stopwatch }
 import java.net.InetSocketAddress
 
+import play.api.libs.json._
+import scala.Some
+
 import mesosphere.servicenet.util.Logging
 
 case class BalanceFactorTestResults(clientConnection: InetSocketAddress,
                                     requestCount: Int,
                                     expectedBalanceFactor: Double,
-                                    expectedBalanceFactorDelta: Double,
+                                    balanceVariance: Double,
                                     durationMillis: Long,
                                     pass: Boolean,
                                     failureException: Option[Throwable],
@@ -22,7 +25,6 @@ case class ServerRequestSummary(serverIp: String,
 class BalanceFactorTest(client: Client) extends Logging {
   def runBalanceFactorTest(
     requestCount: Int,
-    expectBalanceFactor: Double,
     expectBalanceFactorDelta: Double): BalanceFactorTestResults = {
     val stopwatch = Stopwatch.start()
 
@@ -55,10 +57,11 @@ class BalanceFactorTest(client: Client) extends Logging {
           ServerRequestSummary(
             serverIp,
             responses.size,
-            (responses.size / totalRequests) * 100
+            responses.size / totalRequests
           )
       }
 
+    val expectBalanceFactor = 1d / results.size
     val expectBalanceFactorMin = expectBalanceFactor - expectBalanceFactorDelta
     val expectBalanceFactorMax = expectBalanceFactor + expectBalanceFactorDelta
     val unbalanced = results.filterNot {
@@ -79,4 +82,43 @@ class BalanceFactorTest(client: Client) extends Logging {
       unbalanced = unbalanced
     )
   }
+}
+
+trait BalanceFactorTestFormatters {
+
+  implicit val seqServerRequestSummaryFormat =
+    new Format[Seq[ServerRequestSummary]] {
+      override def reads(json: JsValue): JsResult[Seq[ServerRequestSummary]] = {
+        ???
+      }
+
+      override def writes(o: Seq[ServerRequestSummary]): JsValue = {
+        JsObject(o.map {
+          case srs: ServerRequestSummary =>
+            srs.serverIp -> JsNumber(srs.numRequests)
+        })
+      }
+    }
+
+  implicit val balanceFactorTestResultsFormat =
+    new Format[BalanceFactorTestResults] {
+      override def reads(json: JsValue): JsResult[BalanceFactorTestResults] = {
+        ???
+      }
+
+      override def writes(o: BalanceFactorTestResults): JsValue = {
+        val conn = o.clientConnection
+        JsObject(Seq(
+          "connection" -> JsString(s"${conn.getHostName}:${conn.getPort}"),
+          "resolvedAddress" -> JsString(conn.getAddress.getHostAddress),
+          "requestCount" -> JsNumber(o.requestCount),
+          "expectedBalanceFactor" -> JsNumber(o.expectedBalanceFactor),
+          "balanceVariance" -> JsNumber(o.balanceVariance),
+          "durationMillis" -> JsNumber(o.durationMillis),
+          "testPassed" -> JsBoolean(o.pass),
+          "results" -> seqServerRequestSummaryFormat.writes(o.allResults),
+          "unbalanced" -> seqServerRequestSummaryFormat.writes(o.unbalanced)
+        ))
+      }
+    }
 }

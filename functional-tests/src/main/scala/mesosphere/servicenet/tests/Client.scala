@@ -2,8 +2,8 @@ package mesosphere.servicenet.tests
 
 import java.net.InetSocketAddress
 
-import com.github.theon.uri.Uri._
 import com.github.theon.uri.Uri
+import com.github.theon.uri.Uri._
 import com.twitter.conversions.time.longToTimeableNumber
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.http.{ RequestBuilder, Http }
@@ -11,6 +11,7 @@ import com.twitter.finagle.{ Service, SimpleFilter }
 import com.twitter.util.Future
 import org.jboss.netty.handler.codec.http.{ HttpResponse, HttpRequest }
 import org.jboss.netty.handler.codec.http.HttpResponseStatus._
+import play.api.libs.json.Json
 
 import mesosphere.servicenet.util.{ Logging, Properties }
 
@@ -76,7 +77,7 @@ class Client(hostname: String, port: Int) extends Logging {
   }
 }
 
-object Client extends App with Logging {
+object Client extends App with Logging with BalanceFactorTestFormatters {
 
   val client: Client = args(0).split(":") match {
     case Array(hostname, port) => new Client(hostname, port.toInt)
@@ -90,56 +91,21 @@ object Client extends App with Logging {
     "svcnet.test.requests",
     "10000"
   ).toInt
-  val expectBalanceFactor = Properties.underlying.getOrElse(
-    "svcnet.test.balance.factor",
-    "100.0"
-  ).toDouble
-  val expectBalanceFactorDelta = Properties.underlying.getOrElse(
+  val balanceVariance = Properties.underlying.getOrElse(
     "svcnet.test.balance.variance",
-    "0.1"
+    "0.05"
   ).toDouble
 
-  val testResults = new BalanceFactorTest(client).runBalanceFactorTest(
+  val results = new BalanceFactorTest(client).runBalanceFactorTest(
     requestCount,
-    expectBalanceFactor,
-    expectBalanceFactorDelta
+    balanceVariance
   )
 
-  val dash80 =
-    "----------------------------------------" +
-      "----------------------------------------"
+  private val address = client.address
+  log.info(s"svcnet.test.requests = $requestCount")
+  log.info(s"svcnet.test.balance.variance = $balanceVariance")
+  log.info(s"clientConnection = ${address.getHostName}:${address.getPort}")
 
-  log.info("Results:")
-  log.info(dash80)
-  testResults.allResults.foreach {
-    case result =>
-      log.info(s" *  ${result.serverIp} -> ${result.percentage}")
-  }
-  log.info(dash80)
-
-  val expectReportString = s"$expectBalanceFactor(+/-$expectBalanceFactorDelta)"
-  if (testResults.unbalanced.nonEmpty) {
-    log.error("Unbalanced:")
-    log.error(dash80)
-    testResults.unbalanced.foreach {
-      case result =>
-        val message =
-          s" *  ${result.serverIp} -> " +
-            s"expected: $expectReportString, " +
-            s"actual: ${result.percentage}"
-        log.error(message)
-    }
-    log.error(dash80)
-  }
-  else {
-    log.info(s"Balanced at $expectReportString")
-  }
-
-  println(JacksonWrapper.serialize(testResults))
-  if (testResults.pass) {
-    System.exit(0)
-  }
-  else {
-    System.exit(5)
-  }
+  println(Json.prettyPrint(Json.toJson(results)))
+  if (results.pass) System.exit(0) else System.exit(5)
 }
