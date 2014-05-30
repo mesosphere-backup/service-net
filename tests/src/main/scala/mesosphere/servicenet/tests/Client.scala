@@ -14,6 +14,7 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus._
 import play.api.libs.json.Json
 
 import mesosphere.servicenet.util.{ Logging, Properties }
+import com.twitter.conversions.storage.longToStorageUnitableWholeNumber
 
 case class TestRequestResponse(requestNumber: Int,
                                responseServerIp: String)
@@ -41,7 +42,7 @@ class Client(hostname: String, port: Int) extends Logging {
   val address = new InetSocketAddress(hostname, port)
 
   lazy val builder = ClientBuilder()
-    .codec(Http())
+    .codec(Http().maxResponseSize(10.megabytes))
     .hosts(address)
     .tcpConnectTimeout(2.seconds)
     .requestTimeout(15.seconds)
@@ -65,7 +66,7 @@ class Client(hostname: String, port: Int) extends Logging {
   }
 
   def ping(requestNumber: Int = 0) = {
-    client(get("/ping" ? ("requestNumber" -> requestNumber))) flatMap {
+    client(get("/" ? ("requestNumber" -> requestNumber))) flatMap {
       case response =>
         Future.value(
           new TestRequestResponse(
