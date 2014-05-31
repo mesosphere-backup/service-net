@@ -35,6 +35,8 @@ object ServiceNetBuild extends Build {
   val SLF4J_VERSION           = "1.7.6"
   val UNFILTERED_VERSION      = "0.7.1"
   val SCALATEST_VERSION       = "2.1.5"
+  val FINAGLE_VERSION         = "6.16.0"
+  val SCALA_URI_VERSION       = "0.3.6"
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -55,7 +57,7 @@ object ServiceNetBuild extends Build {
       assemblySettings ++
       graphSettings
   ).dependsOn(daemon, dsl, http, ns, patch, config, util)
-   .aggregate(daemon, dsl, http, ns, patch, config, util)
+   .aggregate(daemon, dsl, http, ns, patch, config, util, tests)
 
   def subproject(suffix: String) = s"${PROJECT_NAME}-$suffix"
 
@@ -122,6 +124,32 @@ object ServiceNetBuild extends Build {
     )
   )
 
+  lazy val tests = Project(
+    id = subproject("tests"),
+    base = file("tests"),
+    settings = commonSettings ++
+      Seq(
+        aggregate in update := false,
+        mainClass in (Compile, packageBin) :=
+          Some("mesosphere.servicenet.tests.Test"),
+        mainClass in (Compile, run) :=
+          Some("mesosphere.servicenet.tests.Test")
+      ) ++
+      assemblySettings ++
+      graphSettings ++
+      Seq(
+        libraryDependencies ++= Seq(
+          "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
+          "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
+          "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION,
+
+          "com.twitter"       %% "finagle-http"      % FINAGLE_VERSION,
+          "com.twitter"       %% "finagle-stats"     % FINAGLE_VERSION,
+          "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION
+        )
+      )
+  ).dependsOn(dsl, util, http)
+
   //////////////////////////////////////////////////////////////////////////////
   // SHARED SETTINGS
   //////////////////////////////////////////////////////////////////////////////
@@ -140,6 +168,7 @@ object ServiceNetBuild extends Build {
 
     resolvers ++= Seq(
       "Mesosphere Repo"     at "http://downloads.mesosphere.io/maven",
+      "Twitter"             at "http://maven.twttr.com/",
       "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
 
