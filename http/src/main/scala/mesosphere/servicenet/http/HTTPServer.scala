@@ -57,9 +57,7 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
     def intent = {
       case req @ Path(Seg("doc" :: Nil)) => req match {
 
-        case GET(_) =>
-          ResponseHeader("Content-Type", Set("application/json")) ~>
-            ResponseString(Json.toJson(doc).toString)
+        case GET(_) => jsonResponse(doc)
 
         case PUT(_) =>
           Json.parse(Body.bytes(req)).validate[Doc] match {
@@ -67,9 +65,7 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
               update(success.get)
               ResponseString("OK")
             case error: JsError =>
-              BadRequest ~>
-                ResponseHeader("Content-Type", Set("application/json")) ~>
-                ResponseString(JsError.toFlatJson(error).toString)
+              BadRequest ~> jsonResponse(error)
           }
 
         case PATCH(_) =>
@@ -78,20 +74,27 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
               update(success.get)
               ResponseString("OK")
             case error: JsError =>
-              BadRequest ~>
-                ResponseHeader("Content-Type", Set("application/json")) ~>
-                ResponseString(JsError.toFlatJson(error).toString)
+              BadRequest ~> jsonResponse(error)
           }
 
         case DELETE(_) =>
           update(Doc())
           ResponseString("OK")
-
       }
 
       case _ => NotFound ~> ResponseString("Not found")
     }
   }
+
+  def jsonResponse(json: JsValue): ResponseFunction[Any] =
+    ResponseHeader("Content-Type", Set("application/json")) ~>
+      ResponseString(Json.prettyPrint(json) + "\n")
+
+  def jsonResponse(e: JsError): ResponseFunction[Any] =
+    jsonResponse(JsError.toFlatJson(e))
+
+  def jsonResponse[T](o: T)(implicit tjs: Writes[T]): ResponseFunction[Any] =
+    jsonResponse(Json.toJson(o))
 
   def run(port: Int = config.httpPort) {
     State.load()
