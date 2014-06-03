@@ -1,6 +1,7 @@
 package mesosphere.servicenet.dsl
 
 import java.net.Inet6Address
+import mesosphere.servicenet.util.InetAddressHelper
 
 /**
   * Network interface and its attached address. If the address is given as a
@@ -16,4 +17,7 @@ case class Interface(name: String, addrs: Seq[Inet6Address])
 object Interface {
   def apply(name: String, addr: Inet6Address): Interface =
     Interface(name, Seq(addr))
+
+  def apply(name: String, addr: String): Interface =
+    Interface(name, InetAddressHelper.ipv6(addr))
 }
