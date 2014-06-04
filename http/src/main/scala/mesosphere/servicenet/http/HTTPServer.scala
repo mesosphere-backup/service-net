@@ -12,7 +12,7 @@ import mesosphere.servicenet.util.{ IO, Logging }
 import java.io.File
 
 class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
-  implicit val config: Config = Config())
+  implicit val conf: Config = Config())
     extends DocProtocol with Logging {
 
   @volatile protected var doc: Doc = Doc()
@@ -31,11 +31,11 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
 
   object State {
     def load(): Unit = synchronized {
-      val f = new File(config.stateStore)
+      val f = new File(conf.stateStore)
       if (f.exists()) {
         val data = IO.read(f)
         if (data.length <= 0) return
-        log info s"Reading state from: ${config.stateStore}"
+        log info s"Reading state from: ${conf.stateStore}"
         Json.parse(data).validate[Doc] match {
           case JsSuccess(docPrime, _) => {
             doc = docPrime
@@ -47,9 +47,9 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
     }
 
     def store() {
-      log info s"Writing state to: ${config.stateStore}"
+      log info s"Writing state to: ${conf.stateStore}"
       val json = Json.toJson(doc)
-      IO.replace(new File(config.stateStore), Json.prettyPrint(json) + "\n")
+      IO.replace(new File(conf.stateStore), Json.prettyPrint(json) + "\n")
     }
   }
 
@@ -96,7 +96,7 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
   def jsonResponse[T](o: T)(implicit tjs: Writes[T]): ResponseFunction[Any] =
     jsonResponse(Json.toJson(o))
 
-  def run(port: Int = config.httpPort) {
+  def run(port: Int = conf.httpPort) {
     State.load()
     Http(port).filter(RestRoutes).run
   }
