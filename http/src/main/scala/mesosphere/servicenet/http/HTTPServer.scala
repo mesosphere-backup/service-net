@@ -82,6 +82,13 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
           ResponseString("OK")
       }
 
+      case req @ Path(Seg("subnet" :: Nil)) => req match {
+        case GET(_) => jsonResponse(Map(
+          "instance" -> conf.instanceSubnet,
+          "service" -> conf.serviceSubnet
+        ))
+      }
+
       case _ => NotFound ~> ResponseString("Not found")
     }
   }
