@@ -40,6 +40,14 @@ object InetAddressHelper {
     ipv6(f"2002:$a%02x$b%02x:$c%02x$d%02x::")
   }
 
+  /**
+    * Present and IPv6 address in an ASCIIbetically sortable form, with all
+    * zeroes filled in. `1511::f:42` becomes
+    * `1511:0000:0000:0000:0000:0000:000f:0042`.
+    */
+  def fullLengthIPv6(addr: Inet6Address): String = addr.getAddress
+    .map(b => f"$b%02x").grouped(2).map(_.mkString("")).mkString(":")
+
   def arpa(ipv6: Inet6Address): String = {
     ipv6.getAddress().map(b => f"$b%02x".toCharArray)
       .flatten.reverse.mkString(".") + ".ip6.arpa"
@@ -47,4 +55,19 @@ object InetAddressHelper {
 
   def arpa(ipv4: Inet4Address): String =
     ipv4.getHostAddress.split('.').reverse.mkString(".") + ".in-addr.arpa"
+
+  def next(addr: Inet6Address): Inet6Address = {
+    val incremented = incrementByteArray(addr.getAddress)
+    InetAddress.getByAddress(incremented).asInstanceOf[Inet6Address]
+  }
+
+  private def incrementByteArray(bytes: Array[Byte]): Array[Byte] = {
+    var carry: Boolean = true
+    // Big-endian array of machine-endian bytes
+    for (b <- bytes.reverse) yield {
+      val b_ = if (carry) (b + 1).toByte else b
+      carry = carry && b_ == 0
+      b_
+    }
+  }.reverse
 }

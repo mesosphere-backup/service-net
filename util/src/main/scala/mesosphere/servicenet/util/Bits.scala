@@ -1,6 +1,6 @@
 package mesosphere.servicenet.util
 
-import java.net.InetAddress
+import java.net.{ Inet6Address, InetAddress }
 import scala.collection.BitSet
 
 object Bits {
@@ -21,6 +21,17 @@ object Bits {
   def toBitSet(bytes: Array[Byte]): BitSet = toBitSet(bytes.toSeq)
 
   def toBitSet(inet: InetAddress): BitSet = toBitSet(inet.getAddress)
+
+  def fromBitSet(bits: BitSet): Array[Byte] =
+    fromBitSet(bits, Math.min(1, Math.ceil(bits.last / 8.0).toInt))
+
+  def fromBitSet(bits: BitSet, length: Int): Array[Byte] = {
+    val indices = 0 to ((length * 8) - 1)
+    for (set <- indices.grouped(8)) yield {
+      for ((bit, i) <- set.reverse.zipWithIndex if bits.contains(bit))
+        yield Math.pow(2, i)
+    }.sum.toByte
+  }.toArray
 
   /**
     * Determine whether a bit is set in a [[Byte]], according to a big-endian

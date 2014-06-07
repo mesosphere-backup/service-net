@@ -1,11 +1,13 @@
 package mesosphere.servicenet.http.json
 
-import mesosphere.servicenet.dsl._
-import mesosphere.servicenet.util.InetAddressHelper
+import java.net.{ InetAddress, Inet4Address, Inet6Address }
+import scala.util.{ Try, Success, Failure }
+
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
-import scala.util.{ Try, Success, Failure }
-import java.net.{ InetAddress, Inet4Address, Inet6Address }
+
+import mesosphere.servicenet.dsl._
+import mesosphere.servicenet.util.InetAddressHelper
 
 /**
   * Custom JSON (de)serializer logic for Service Net DSL types.
@@ -41,7 +43,7 @@ trait DocProtocol {
   implicit val inet6SubnetFormat = new Format[Inet6Subnet] {
     def writes(net: Inet6Subnet): JsValue = JsString(net.getCanonicalForm)
     def reads(json: JsValue): JsResult[Inet6Subnet] = json match {
-      case JsString(s) => Try(Inet6Subnet.parse(s)) match {
+      case JsString(s) => Try(Inet6Subnet(s)) match {
         case Success(net)   => JsSuccess(net)
         case Failure(cause) => JsError("Malformed subnet")
       }

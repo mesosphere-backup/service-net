@@ -37,6 +37,7 @@ object ServiceNetBuild extends Build {
   val SCALATEST_VERSION       = "2.1.5"
   val FINAGLE_VERSION         = "6.16.0"
   val SCALA_URI_VERSION       = "0.3.6"
+  val H2_VERSION              = "1.4.178"
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -80,7 +81,8 @@ object ServiceNetBuild extends Build {
       libraryDependencies ++= Seq(
         "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
         "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
-        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION
+        "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION,
+        "com.h2database"     % "h2"                % H2_VERSION
       )
     )
   ).dependsOn(dsl, config, util % "test->test;compile->compile")

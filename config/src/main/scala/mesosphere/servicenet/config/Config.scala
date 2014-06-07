@@ -23,23 +23,39 @@ import mesosphere.servicenet.util._
   *
   * @param localIPv4 The local endpoint to use for 6in4 tunnels. (Properties:
   *                  `svcnet.ipv4` or `mesosphere.servicenet.ipv4`)
-  * @param instanceSubnet The subnet on which instance IPs are allocated.
-  *                       (Properties: `svcnet.subnet.instance` or
+  * @param instanceSubnet The subnet on which instance IPs are allocated, and
+  *                        through which traffic should be routed to this host
+  *                        if there is a tunnel configured for it. (Properties:
+  *                        `svcnet.subnet.instance` or
   *                        `mesosphere.servicenet.subnet.instance`)
-  * @param serviceSubnet The subnet on which service IPs are found. This is a
-  *                      global setting, shared by all nodes in the cluster.
+  * @param serviceSubnet The subnet on which service IPs are found. This should
+  *                      be a `/96` that is fairly high in the address space of
+  *                      instance subnet, to prevent collisions between service
+  *                      IPs and instance IPs. The service subnet must be below
+  *                      the instance subnet. In most situations, Svcnet's
+  *                      defaulting will do the right thing with regards to
+  *                      picking the service subnet within the the instance
+  *                      subnet, so you shouldn't have to set this parameter.
   *                      (Properties: `svcnet.subnet.service` or
   *                       `mesosphere.servicenet.subnet.service`)
   * @param rehearsal In rehearsal mode, the interpreter should filter tasks
   *                  and then print diagnostics for each change that would be
   *                  performed. DNS is updated as usual. (Properties:
-  *                   `svcnet.rehearsal` and `mesosphere.servicenet.rehearsal`)
-  * @param stateStore The path at which to store the state file, to allow the
-  *                   service to be restarted safely. The default is
-  *                   `/tmp/svcnet.json` (maintaining state between reboots is
-  *                   not particularly useful since all virtual interfaces and
-  *                   firewalls will by default disappear). (Properties:
-  *                   `svcnet.state` or `mesosphere.servicenet.state`)
+  *                  `svcnet.rehearsal` and `mesosphere.servicenet.rehearsal`)
+  * @param netState The path at which to store the network state file, to allow
+  *                 the service to be restarted safely. The default is
+  *                 `/tmp/svcnet.json` (maintaining state between reboots is
+  *                 not particularly useful since all virtual interfaces and
+  *                 firewalls will by default disappear). (Properties:
+  *                 `svcnet.state.net` or `mesosphere.servicenet.state.net`)
+  * @param ipState The path at which to store the IP allocation database. The
+  *                default is `/var/lib/svcnet`. (Which becomes
+  *                `/tmp/svcnet.mv.db` due to H2's naming behaviour.) This
+  *                database allows local tasks to obtain a unique IPv6 IP from
+  *                the instance subnet. It should be allowed to persist between
+  *                reboots, although re-allocating very old IPs is not
+  *                disastrous. (Properties: `svcnet.state.ip` or
+  *                `mesosphere.servicenet.state.ip`)
   * @param logLevel The level at which to log. The default is INFO.
   *                 (Properties: `svcnet.log.level` and
   *                  `mesosphere.servicenet.log.level`)
@@ -58,7 +74,8 @@ case class Config(localIPv4: Inet4Address,
                   instanceSubnet: Inet6Subnet,
                   serviceSubnet: Inet6Subnet,
                   rehearsal: Boolean,
-                  stateStore: String,
+                  netState: String,
+                  ipState: String,
                   logLevel: String,
                   logTimestamp: String,
                   nsPort: Int,
@@ -68,12 +85,17 @@ case class Config(localIPv4: Inet4Address,
     s"svcnet.subnet.instance=${instanceSubnet.getCanonicalForm}",
     s"svcnet.subnet.service=${serviceSubnet.getCanonicalForm}",
     s"svcnet.rehearsal=$rehearsal",
-    s"svcnet.state=$stateStore",
+    s"svcnet.state.net=$netState",
+    s"svcnet.state.ip=$ipState",
     s"svcnet.log.level=$logLevel",
     s"svcnet.log.timestamp=$logTimestamp",
     s"ns.port=$nsPort",
     s"http.port=$httpPort"
   )
+
+  require(instanceSubnet.contains(serviceSubnet),
+    s"The service subnet ${serviceSubnet.getCanonicalForm} must be within " +
+      s"the instance subnet ${instanceSubnet.getCanonicalForm}")
 
   def logSummary() {
     for (line <- propertyLines) log info line
@@ -132,16 +154,18 @@ object Config extends Logging {
       .orElse(ipv4).getOrElse(InetAddressHelper.ipv4("127.0.0.1"))
     // The instance subnet should be the one specified, or the one derived from
     // the host's IPv6 address, or the one derived from the host's 6to4
-    // address, or failing that, the subnet 2001:db8:1::/64.
-    val forInstances = properties.get("subnet.instance")
-      .orElse(ipv6.map(_.getHostAddress ++ "/64"))
-      .orElse(ipv4.map(InetAddressHelper.ipv6(_))
-        .map(_.getHostAddress ++ "/64"))
-      .getOrElse("2001:db8:1::/64")
+    // address, or failing that, the subnet 2001:db8:1:1::/64.
+    val forInstances = Inet6Subnet(
+      properties.get("subnet.instance")
+        .orElse(ipv6.map(_.getHostAddress ++ "/64"))
+        .orElse(ipv4.map(InetAddressHelper.ipv6(_))
+          .map(_.getHostAddress ++ "/64"))
+        .getOrElse("2001:db8:1:1:/64")
+    )
     // The service subnet should be the one specified, or if none is specified
-    // then 2001:db8:2::/64 is to be used.
-    val forServices = properties.get("subnet.service")
-      .getOrElse("2001:db8:2::/64")
+    // then the highest /96 under the instance subnet is used.
+    val forServices = properties.get("subnet.service").map(Inet6Subnet(_))
+      .getOrElse(forInstances.highest(96))
 
     /*  The prefix 2001:db8::/32 used above is reserved for documentation.
 
@@ -158,13 +182,14 @@ object Config extends Logging {
 
     Config(
       localIPv4 = localIPv4,
-      instanceSubnet = Inet6Subnet.parse(forInstances),
-      serviceSubnet = Inet6Subnet.parse(forServices),
+      instanceSubnet = forInstances,
+      serviceSubnet = forServices,
       rehearsal = properties.get("rehearsal").map(_.toBoolean).getOrElse(false),
-      stateStore = properties.getOrElse("state", "/tmp/svcnet.json"),
+      netState = properties.getOrElse("state.net", "/tmp/svcnet.json"),
+      ipState = properties.getOrElse("state.ip", "/var/lib/svcnet.db"),
       logLevel = properties.getOrElse("log.level", "INFO"),
       logTimestamp = properties.getOrElse("log.timestamp", "short"),
-      nsPort = properties.get("ns.port").map(_.toInt).getOrElse(53),
+      nsPort = properties.get("ns.port").map(_.toInt).getOrElse(9001),
       httpPort = properties.get("http.port").map(_.toInt).getOrElse(9000)
     )
   }

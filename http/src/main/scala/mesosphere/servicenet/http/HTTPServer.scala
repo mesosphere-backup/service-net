@@ -16,6 +16,7 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
     extends DocProtocol with Logging {
 
   @volatile protected var doc: Doc = Doc()
+  val ipService: IPService = IPService(conf.instanceSubnet, conf.ipState)
 
   def update(docPrime: Doc) {
     update(Diff(doc, docPrime))
@@ -31,11 +32,11 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
 
   object State {
     def load(): Unit = synchronized {
-      val f = new File(conf.stateStore)
+      val f = new File(conf.netState)
       if (f.exists()) {
         val data = IO.read(f)
         if (data.length <= 0) return
-        log info s"Reading state from: ${conf.stateStore}"
+        log info s"Reading state from: ${conf.netState}"
         Json.parse(data).validate[Doc] match {
           case JsSuccess(docPrime, _) => {
             doc = docPrime
@@ -47,9 +48,9 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
     }
 
     def store() {
-      log info s"Writing state to: ${conf.stateStore}"
+      log info s"Writing state to: ${conf.netState}"
       val json = Json.toJson(doc)
-      IO.replace(new File(conf.stateStore), Json.prettyPrint(json) + "\n")
+      IO.replace(new File(conf.netState), Json.prettyPrint(json) + "\n")
     }
   }
 
@@ -87,6 +88,34 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
           "instance" -> conf.instanceSubnet,
           "service" -> conf.serviceSubnet
         ))
+      }
+
+      /**
+        * The IP request endpoint provides a way for local task to request an IP
+        * from the instance subnet and register their name alongside it. The
+        * name/IP pairs are published so that Svcbridge can pick them up and
+        * use them in NATFans and create DNS for them.
+        *
+        * This endpoint is a stop-gap measure, while we wait for support in
+        * Mesos for allocating unique IPv6 IPs from a slave's subnet.
+        *
+        * IP allocations are dropped as new ones are added. A few thousand are
+        * stored at any one time. Because newer IPs are always greater than
+        * older IPs, there is no possibility of IP reuse. Because the size of
+        * subnets is very large, running out of IPs is not a matter of
+        * practical concern.
+        */
+      case req @ Path(Seg("ip-request" :: Nil)) => req match {
+        case GET(_) => jsonResponse(ipService.recent().toMap)
+
+        case POST(_) =>
+          Json.parse(Body.bytes(req)).validate[IPServiceRequest] match {
+            case JsSuccess(req, _) =>
+              val ip = ipService.allocate(req)
+              jsonResponse(Map("name" -> req.name, "ip" -> ip.getHostAddress))
+            case error: JsError =>
+              BadRequest ~> jsonResponse(error)
+          }
       }
 
       case _ => NotFound ~> ResponseString("Not found")

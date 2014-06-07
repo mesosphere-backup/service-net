@@ -88,14 +88,14 @@ class DocUtil {
           addr = ipv6(s"$baseAddr:a::1000"),
           localEnd = ipv4(ipA),
           remoteEnd = ipv4(ipB),
-          remoteIPv6Net = Inet6Subnet.parse(s"$baseAddr:b::/64")
+          remoteIPv6Net = Inet6Subnet(s"$baseAddr:b::/64")
         ),
         Tunnel6in4(
           name = "tunnel_ba",
           addr = ipv6(s"$baseAddr:b::1000"),
           localEnd = ipv4(ipB),
           remoteEnd = ipv4(ipA),
-          remoteIPv6Net = Inet6Subnet.parse(s"$baseAddr:a::/64")
+          remoteIPv6Net = Inet6Subnet(s"$baseAddr:a::/64")
         )
       )
     )
