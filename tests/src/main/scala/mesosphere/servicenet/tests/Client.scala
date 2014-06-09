@@ -4,6 +4,7 @@ import java.net.InetSocketAddress
 
 import com.github.theon.uri.Uri
 import com.github.theon.uri.Uri._
+import com.twitter.conversions.storage.longToStorageUnitableWholeNumber
 import com.twitter.conversions.time.longToTimeableNumber
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.http.{ RequestBuilder, Http }
@@ -14,12 +15,11 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus._
 import play.api.libs.json.Json
 
 import mesosphere.servicenet.util.{ Logging, Properties }
-import com.twitter.conversions.storage.longToStorageUnitableWholeNumber
 
 case class TestRequestResponse(requestNumber: Int,
                                responseServerIp: String)
 
-class Client(hostname: String, port: Int) extends Logging {
+class Client(host: String, port: Int) extends Logging {
 
   /**
     * Convert HTTP 4xx and 5xx class responses into Exceptions.
@@ -39,7 +39,7 @@ class Client(hostname: String, port: Int) extends Logging {
     }
   }
 
-  val address = new InetSocketAddress(hostname, port)
+  val address = new InetSocketAddress(host, port)
 
   lazy val builder = ClientBuilder()
     .codec(Http().maxResponseSize(10.megabytes))
@@ -59,7 +59,7 @@ class Client(hostname: String, port: Int) extends Logging {
   }
 
   private[this] def get(uri: Uri): HttpRequest = {
-    val uriString = s"http://$hostname:$port/${uri.toString()}"
+    val uriString = s"http://$host:$port/${uri.toString()}"
     RequestBuilder()
       .url(uriString.replaceAll("(?<!:)//", "/"))
       .buildGet()
@@ -85,12 +85,12 @@ object Client extends Logging with BalanceFactorTestFormatters {
   }
 
   def main(args: Array[String]) = {
-    val hostnamePort = {
+    val connection = {
       if (args.length == 0) None
-      args(0).split(":") match {
-        case Array(hostname, port) => Some(hostname -> port.toInt)
-        case Array(hostname)       => Some(hostname -> 80)
-        case _                     => None
+      val HostAndPort = "^(.+)(?:[:]([0-9]+))$".r
+      args(0) match {
+        case HostAndPort(host, port) => Some(host, port.toInt)
+        case host                    => Some(host, 80)
       }
     }
 
@@ -103,14 +103,14 @@ object Client extends Logging with BalanceFactorTestFormatters {
       "0.05"
     ).toDouble
 
-    hostnamePort match {
+    connection match {
       case Some(t) =>
-        val (hostname, port) = t
+        val (host, port) = t
         log.info(s"svcnet.test.requests = $requestCount")
         log.info(s"svcnet.test.balance.variance = $balanceVariance")
-        log.info(s"clientConnection = $hostname:$port")
+        log.info(s"clientConnection = $host:$port")
 
-        val client = new Client(hostname, port)
+        val client = new Client(host, port)
         val results = new BalanceFactorTest(client).runBalanceFactorTest(
           requestCount,
           balanceVariance
