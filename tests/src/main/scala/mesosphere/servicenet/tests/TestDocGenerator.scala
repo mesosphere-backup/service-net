@@ -1,9 +1,10 @@
 package mesosphere.servicenet.tests
 
-import mesosphere.servicenet.dsl.{Doc, Inet6Subnet, Interface, Tunnel6in4}
-import mesosphere.servicenet.http.json.DocProtocol
-import mesosphere.servicenet.util.InetAddressHelper.{ipv4, ipv6}
 import play.api.libs.json.Json
+
+import mesosphere.servicenet.dsl._
+import mesosphere.servicenet.http.json.DocProtocol
+import mesosphere.servicenet.util.InetAddressHelper.{ ipv4, ipv6 }
 
 case class Host(
   interface: Interface,
@@ -38,7 +39,7 @@ class TestDocGenerator {
 
           val instances = for {
             instance <- 1 to subnetCount
-            if instance != subnet
+            //            if instance != subnet
           } yield {
             val instanceName = f"$serviceName-I$instance%x"
             val instanceAddr = f"$serviceAddr:$instance%x"
@@ -86,9 +87,34 @@ class TestDocGenerator {
       )
     }
 
+    val natFans = {
+      val services = for {
+        host <- hosts
+        subnet <- host.subnets
+        service <- subnet.services
+      } yield service
+
+      val serviceGroups = services.groupBy { service =>
+        val split = service.interface.name.split("-")
+        split(2)
+      }
+
+      val fans = for {
+        (serviceName, services) <- serviceGroups
+        service <- services
+      } yield {
+        NATFan(
+          name = s"NAT-${service.interface.name}",
+          entrypoint = service.interface.addrs.head,
+          endpoints = service.instances.flatMap(_.addrs)
+        )
+      }
+      fans
+    }
+
     Doc(
       interfaces = interfaces,
-      //      natFans = natFans,
+      natFans = natFans.toSeq,
       tunnels = tunnels
     )
   }
