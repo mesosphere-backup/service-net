@@ -42,8 +42,7 @@ class TestDocGenerator {
             //            if instance != subnet
           } yield {
             val instanceName = f"$serviceName-I$instance%x"
-            val instanceAddr = f"$serviceAddr:$instance%x"
-            Interface(instanceName, ipv6(s"$instanceAddr::"))
+            Interface(instanceName, ipv6(f"$serviceAddr::$instance%x"))
           }
           NetService(Interface(serviceName, ipv6(s"$serviceAddr::")), instances)
         }
