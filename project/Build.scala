@@ -38,7 +38,7 @@ object ServiceNetBuild extends Build {
   val FINAGLE_VERSION         = "6.16.0"
   val SCALA_URI_VERSION       = "0.3.6"
   val H2_VERSION              = "1.4.178"
-
+  val SCOPT_VERSION           = "3.2.0"
 
   //////////////////////////////////////////////////////////////////////////////
   // PROJECTS
@@ -144,10 +144,10 @@ object ServiceNetBuild extends Build {
           "net.databinder"    %% "unfiltered-filter" % UNFILTERED_VERSION,
           "net.databinder"    %% "unfiltered-jetty"  % UNFILTERED_VERSION,
           "com.typesafe.play" %% "play-json"         % PLAY_JSON_VERSION,
-
           "com.twitter"       %% "finagle-http"      % FINAGLE_VERSION,
           "com.twitter"       %% "finagle-stats"     % FINAGLE_VERSION,
-          "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION
+          "com.github.theon"  %% "scala-uri"         % SCALA_URI_VERSION,
+          "com.github.scopt"  %% "scopt"             % SCOPT_VERSION
         )
       )
   ).dependsOn(dsl, util, http)

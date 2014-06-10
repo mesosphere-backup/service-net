@@ -30,11 +30,11 @@ class TestDocGenerator {
       val hAddr = f"2001:db8:$h%x"
 
       val subnets = for { subnet <- 1 to subnetCount } yield {
-        val subnetName = f"$hName-SN$subnet%x"
+        val subnetName = f"$hName-NET$subnet%x"
         val subnetAddr = f"$hAddr:$subnet%x"
 
         val services = for { service <- 1 to serviceCount } yield {
-          val serviceName = f"$subnetName-S$service%x"
+          val serviceName = f"$subnetName-SVC$service%x"
           val serviceAddr = f"$subnetAddr:$service%x"
 
           val instances = for {
@@ -123,20 +123,35 @@ class TestDocGenerator {
 object TestDocGenerator extends DocProtocol {
   def main(args: Array[String]) {
     val generator = new TestDocGenerator
-    val doc = generator.generateDoc(10, 10, 10, Seq(
-      "10.1.2.162",
-      "10.1.2.164",
-      "10.1.2.161",
-      "10.1.2.160",
-      "10.1.2.155",
-      "10.1.2.156",
-      "10.1.2.157",
-      "10.1.2.158",
-      "10.1.2.159",
-      "10.1.2.163"
-    ))
+
+    val opts = parser.parse(args, Options()).get
+
+    val doc = generator
+      .generateDoc(opts.hosts, opts.subnets, opts.services, opts.ips)
     val json = Json.toJson(doc)
     val jsonString = Json.prettyPrint(json)
     println(jsonString)
   }
+
+  val parser = new scopt.OptionParser[Options]("scopt") {
+    head("testy")
+    opt[Int]("hosts") action { (x, c) =>
+      c.copy(hosts = x)
+    } text ("hosts is an integer property")
+    opt[Int]("subnets") action { (x, c) =>
+      c.copy(subnets = x)
+    } text ("subnets is an integer property")
+    opt[Int]("services") action { (x, c) =>
+      c.copy(services = x)
+    } text ("services is an integer property")
+    help("help") text ("prints this usage text")
+    arg[String]("<IPv4 IP>...") unbounded () optional () action { (x, c) =>
+      c.copy(ips = c.ips :+ x)
+    } text ("if tunneling, IPv4s for each host")
+  }
 }
+
+case class Options(hosts: Int = 10,
+                   subnets: Int = 10,
+                   services: Int = 10,
+                   ips: Seq[String] = Seq())
