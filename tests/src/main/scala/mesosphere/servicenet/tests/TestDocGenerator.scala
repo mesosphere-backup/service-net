@@ -1,10 +1,14 @@
 package mesosphere.servicenet.tests
 
+import java.io.{ FileOutputStream, File }
+import java.util.Properties
+
 import play.api.libs.json.Json
 
 import mesosphere.servicenet.dsl._
 import mesosphere.servicenet.http.json.DocProtocol
 import mesosphere.servicenet.util.InetAddressHelper.{ ipv4, ipv6 }
+import mesosphere.servicenet.util.IO
 
 case class Host(
   interface: Interface,
@@ -16,7 +20,7 @@ case class NetService(
   interface: Interface,
   instances: Seq[Interface])
 
-class TestDocGenerator {
+class TestDocGenerator extends DocProtocol {
   def generateDoc(
     hostCount: Int,
     subnetCount: Int,
@@ -111,25 +115,45 @@ class TestDocGenerator {
       fans
     }
 
-    Doc(
+    val doc = Doc(
       interfaces = interfaces,
       natFans = natFans.toSeq,
       tunnels = tunnels
     )
+
+    val props = for {
+      host <- hosts
+      subnet <- host.subnets
+      service <- subnet.services
+    } yield {
+      val subnetInterface = subnet.interface
+      val props = new Properties()
+      props.put("svcnet.subnet.instance", service.interface.addrs.head.getHostAddress)
+      props.put("svcnet.subnet.service", subnetInterface.addrs.head.getHostAddress)
+      subnetInterface.name -> props
+    }
+
+    props.foreach {
+      case (name, prop) =>
+        val fos = new FileOutputStream(new File(s"$name.properties"), false)
+        prop.store(fos, s"Host and Subnet: $name")
+        fos.flush()
+        fos.close()
+    }
+
+    val json = Json.toJson(doc)
+    val jsonString = Json.prettyPrint(json)
+    IO.overwrite(new File("net.json"), jsonString)
   }
 }
 
-object TestDocGenerator extends DocProtocol {
+object TestDocGenerator {
   def main(args: Array[String]) {
     val generator = new TestDocGenerator
 
     val opts = parser.parse(args, Options()).get
 
-    val doc = generator
-      .generateDoc(opts.hosts, opts.subnets, opts.services, opts.ips)
-    val json = Json.toJson(doc)
-    val jsonString = Json.prettyPrint(json)
-    println(jsonString)
+    generator.generateDoc(opts.hosts, opts.subnets, opts.services, opts.ips)
   }
 
   val parser = new scopt.OptionParser[Options]("scopt") {
