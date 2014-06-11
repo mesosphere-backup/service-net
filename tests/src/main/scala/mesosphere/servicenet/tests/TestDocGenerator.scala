@@ -72,8 +72,8 @@ class TestDocGenerator extends DocProtocol {
     }
 
     val interfaces = hosts.flatMap { host =>
-      host.interface +: host.subnets.flatMap { subnet =>
-        subnet.interface +: subnet.services.flatMap { service =>
+      host.subnets.flatMap { subnet =>
+        subnet.services.flatMap { service =>
           service.interface +: service.instances
         }
       }
