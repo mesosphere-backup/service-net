@@ -1,7 +1,8 @@
 package mesosphere.servicenet.tests
 
 import java.io.{ FileOutputStream, File }
-import java.util.Properties
+import java.text.SimpleDateFormat
+import java.util.{ Date, Properties }
 
 import play.api.libs.json.Json
 
@@ -15,10 +16,19 @@ case class Host(
   subnets: Seq[Subnet])
 case class Subnet(
   interface: Interface,
-  services: Seq[NetService])
+  services: Seq[NetService]) {
+  private val splits = interface.name.split("-")
+  val host = splits(0)
+  val name = splits(1)
+}
 case class NetService(
   interface: Interface,
-  instances: Seq[Interface])
+  instances: Seq[Interface]) {
+  private val splits = interface.name.split("-")
+  val host = splits(0)
+  val net = splits(1)
+  val name = splits(2)
+}
 
 class TestDocGenerator extends DocProtocol {
   def generateDoc(
@@ -97,19 +107,20 @@ class TestDocGenerator extends DocProtocol {
         service <- subnet.services
       } yield service
 
-      val serviceGroups = services.groupBy { service =>
-        val split = service.interface.name.split("-")
-        split(2)
-      }
+      val serviceGroups = services.groupBy(_.name)
 
       val fans = for {
-        (serviceName, services) <- serviceGroups
         service <- services
       } yield {
+        val allServices = serviceGroups(service.name)
+        val endpoints = for {
+          s <- allServices
+          if s.host != service.host // we don't nat to our own host
+        } yield s.interface.addrs.head
         NATFan(
           name = s"NAT-${service.interface.name}",
           entrypoint = service.interface.addrs.head,
-          endpoints = service.instances.flatMap(_.addrs)
+          endpoints = endpoints
         )
       }
       fans
@@ -124,21 +135,24 @@ class TestDocGenerator extends DocProtocol {
     val props = for {
       host <- hosts
       subnet <- host.subnets
-      service <- subnet.services
     } yield {
       val subnetInterface = subnet.interface
-      val props = new Properties()
-      props.put("svcnet.subnet.instance", service.interface.addrs.head.getHostAddress)
-      props.put("svcnet.subnet.service", subnetInterface.addrs.head.getHostAddress)
-      subnetInterface.name -> props
+      subnetInterface.name -> Inet6Subnet(subnetInterface.addrs.head, 64)
     }
 
+    val generationTime =
+      new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date())
+
     props.foreach {
-      case (name, prop) =>
-        val fos = new FileOutputStream(new File(s"$name.properties"), false)
-        prop.store(fos, s"Host and Subnet: $name")
-        fos.flush()
-        fos.close()
+      case (name, subnet) =>
+        val fileContents =
+          s"""
+            |# Host and Subnet: $name
+            |# $generationTime
+            |svcnet.subnet.instance=${subnet.getCanonicalForm}
+            |ns.port=53
+          """.stripMargin.trim + "\n" // add back the trailing new line
+        IO.overwrite(new File(s"$name.properties"), fileContents)
     }
 
     val json = Json.toJson(doc)
