@@ -1,8 +1,8 @@
 package mesosphere.servicenet.tests
 
-import java.io.{ FileOutputStream, File }
+import java.io.File
 import java.text.SimpleDateFormat
-import java.util.{ Date, Properties }
+import java.util.Date
 
 import play.api.libs.json.Json
 
@@ -15,15 +15,15 @@ case class Host(
   interface: Interface,
   subnets: Seq[Subnet])
 case class Subnet(
-  interface: Interface,
-  services: Seq[NetService]) {
+    interface: Interface,
+    services: Seq[NetService]) {
   private val splits = interface.name.split("-")
   val host = splits(0)
   val name = splits(1)
 }
 case class NetService(
-  interface: Interface,
-  instances: Seq[Interface]) {
+    interface: Interface,
+    instances: Seq[Interface]) {
   private val splits = interface.name.split("-")
   val host = splits(0)
   val net = splits(1)
@@ -65,9 +65,30 @@ class TestDocGenerator extends DocProtocol {
           services
         )
       }
+
+      val cannedSubnetWithServiceInstances = {
+        val revBytes = "eeee"
+        val netName = f"$hName-NET$revBytes"
+        val netAddr = s"$hAddr:$revBytes"
+
+        val svcName = f"$netName-SVC$revBytes"
+        val svcAddr = s"$netAddr:$revBytes"
+
+        val instName = f"$svcName-I1"
+        Subnet(
+          Interface(netName, ipv6(s"$netAddr::")), Seq(
+            NetService(
+              Interface(svcName, ipv6(s"$svcAddr::")), Seq(
+                Interface(instName, ipv6(s"$svcAddr::1"))
+              )
+            )
+          )
+        )
+      }
+
       Host(
         Interface(hName, ipv6(s"$hAddr::")),
-        subnets
+        subnets :+ cannedSubnetWithServiceInstances
       )
     }
 
