@@ -1,6 +1,7 @@
 #!/bin/sh
 sbt "project service-net-tests" assembly >&2 &&
 mkdir -p tests/harness &&
+rm tests/harness/* &&
 cd tests/harness &&
 java -cp ../../tests/target/scala-*/*.jar \
   mesosphere.servicenet.tests.TestDocGenerator "$@"
