@@ -8,7 +8,6 @@ cat <<USAGE
 
 USAGE
 }; function --help { -h ;}                 # A nice way to handle -h and --help
-export LC_ALL=en_US.UTF-8                    # A locale that works consistently
 
 function main {
   sbt assembly
@@ -16,6 +15,11 @@ function main {
   do init_host "$num"
   done
 }
+
+function globals {
+  export LC_ALL=en_US.UTF-8                  # A locale that works consistently
+  export LANG="$LC_ALL"
+}; globals
 
 function init_host {
   local num="$1"
@@ -41,20 +45,50 @@ function init_host {
   # copy the network doc to the host
   scp tests/harness/net.json "$hostname":/tmp
 
-  ssh "$hostname" bash <<BASH
-    tar xzf /tmp/'$tar'
-    ls >&2
-    for config in tests/harness/H$num-*.properties
-    do
-      java -Dsvcnet.config=\$config -jar /tmp/svcnet.jar > \$config.log 2>&1 &
-      pid=\$!
+  remote "$hostname" --sudo -- run_svcnet_over_configs "$num" /tmp/"$tar"
+}
+
+function run_svcnet_over_configs {
+  local num="$1" tar="$2"
+  tar xzf "$tar"
+  for config in tests/harness/H"$num"-*.properties
+  do
+    local cmd=( java -Dsvcnet.config="$config" -jar /tmp/svcnet.jar )
+    { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
+    "${cmd[@]}" & #>"$config".log &
+    local pid=$!
+    ( sleep 10
       curl -X PUT http://localhost:9000/doc --data-binary @/tmp/net.json
-      kill -TERM \$!
-    done
-BASH
+    ) && local code=$? || local code=$?
+    kill -TERM "$pid"
+    [[ $code = 0 ]] || return $code
+  done
 }
 
 ##################################################################### Utilities
+
+# Used like this: remote <ssh options> -- <command> <arg>*
+function remote {
+  local ssh=( -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no )
+  local shell=( bash )
+  while [[ ${1:+isset} ]]
+  do
+    case "$1" in
+      --sudo) shell=( sudo bash ) ; shift ;;
+      --)     shift ; break ;;
+      *)      ssh=( "${ssh[@]}" "$1" ) ; shift ;;
+    esac
+  done
+  serialized "$@" | ssh "${ssh[@]}" "${shell[@]}"
+}
+
+# Set up the actor on the remote end and then send it a message.
+function serialized {
+  declare -f
+  echo set -o errexit -o nounset -o pipefail
+  printf 'globals &&'
+  printf ' %q' "$@" ; echo
+}
 
 function msg { out "$*" >&2 ;}
 function err { local x=$? ; msg "$*" ; return $(( $x == 0 ? 1 : $x )) ;}
