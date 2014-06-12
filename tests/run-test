@@ -1,0 +1,47 @@
+#!/bin/sh
+
+sbt assembly
+
+rc=$?
+if [[ ${rc} != 0 ]]; then
+    exit ${rc}
+fi
+
+function initHost() {
+  local host=$1
+  if [[ host == 0 ]]; then
+      host = a
+  fi
+
+  local hostName=0${host}.netx-stats.emesos.co
+
+  # ship the service net jar
+
+  # ship the testing app jar to the server
+  scp tests/target/scala-2.10/service-net-tests-assembly-*.jar \
+    ${hostName}:/tmp/svcnet-test.jar
+
+  # tar up the properties files for that host and copy it to the host
+  local tarName=H${host}.properties.tgz
+  tar czf ${tarName} tests/harness/H${host}*.properties
+  scp ${tarName} ${hostName}:/tmp
+
+  # copy the network doc to the host
+  scp net.json ${hostName}:/tmp
+
+  ssh ${hostName} bash <<<"
+    tar xzg $tarName
+    for config in \$(ls -1 H$host-*.properties); do
+      java -Dsvcnet.config=$config -jar svcnet.jar > $config.log 2>&1 &
+      echo $? > svcnet.pid
+      curl -X PUT http://[2001:db8:$host]:9000/doc --data-binary @net.json
+      # is this a blocking call? or do we need to figure out how long it takes
+      kill -15 \$(cat svcnet.pid) && rm svcnet.pid
+    done
+  "
+}
+
+for hostNumber in {0..9}; do
+    initHost ${hostNumber}
+done
+
