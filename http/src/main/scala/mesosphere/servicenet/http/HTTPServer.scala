@@ -16,7 +16,12 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
     extends DocProtocol with Logging {
 
   @volatile protected var doc: Doc = Doc()
-  val ipService: IPService = IPService(conf.instanceSubnet, conf.ipState)
+  val ipService: Option[IPService] = if (conf.ipStateEnabled) {
+    Some(IPService(conf.instanceSubnet, conf.ipState))
+  }
+  else {
+    None
+  }
 
   def update(docPrime: Doc) {
     update(Diff(doc, docPrime))
@@ -106,12 +111,13 @@ class HTTPServer(updated: (Diff, Doc) => Unit = (diff: Diff, doc: Doc) => ())(
         * practical concern.
         */
       case req @ Path(Seg("ip-request" :: Nil)) => req match {
-        case GET(_) => jsonResponse(ipService.recent().toMap)
+        case GET(_) if ipService.nonEmpty =>
+          jsonResponse(ipService.get.recent().toMap)
 
-        case POST(_) =>
+        case POST(_) if ipService.nonEmpty =>
           Json.parse(Body.bytes(req)).validate[IPServiceRequest] match {
             case JsSuccess(req, _) =>
-              val ip = ipService.allocate(req)
+              val ip = ipService.get.allocate(req)
               jsonResponse(Map("name" -> req.name, "ip" -> ip.getHostAddress))
             case error: JsError =>
               BadRequest ~> jsonResponse(error)
