@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 sbt assembly
 
@@ -29,19 +29,18 @@ function initHost() {
   # copy the network doc to the host
   scp net.json ${hostName}:/tmp
 
-  ssh ${hostName} bash <<<"
-    tar xzg $tarName
-    for config in \$(ls -1 H$host-*.properties); do
-      java -Dsvcnet.config=$config -jar svcnet.jar > $config.log 2>&1 &
+  ssh ${hostName} bash << 'EOF'
+    tar xzg ${tarName}
+    for config in $(ls -1 H${host}-*.properties); do
+      java -Dsvcnet.config=${config} -jar svcnet.jar > ${config}.log 2>&1 &
       echo $? > svcnet.pid
-      curl -X PUT http://[2001:db8:$host]:9000/doc --data-binary @net.json
+      curl -X PUT http://[2001:db8:${host}::]:9000/doc --data-binary @net.json
       # is this a blocking call? or do we need to figure out how long it takes
-      kill -15 \$(cat svcnet.pid) && rm svcnet.pid
+      kill -15 $(cat svcnet.pid) && rm svcnet.pid
     done
-  "
+  EOF
 }
 
 for hostNumber in {0..9}; do
     initHost ${hostNumber}
 done
-
