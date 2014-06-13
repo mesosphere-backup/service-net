@@ -31,11 +31,10 @@ case class NetService(
 }
 
 class TestDocGenerator extends DocProtocol {
-  def generateDoc(
-    hostCount: Int,
-    subnetCount: Int,
-    serviceCount: Int,
-    hostIpv4Addresses: Seq[String] = Seq()) = {
+  def generateDoc(hostCount: Int,
+                  serviceCount: Int,
+                  instanceCount: Int,
+                  hostIpv4Addresses: Seq[String] = Seq()) = {
 
     val numberOfHosts = math.max(hostCount, hostIpv4Addresses.length)
 
@@ -43,52 +42,44 @@ class TestDocGenerator extends DocProtocol {
       val hName = f"H$h%x"
       val hAddr = f"2001:db8:$h%x"
 
-      val subnets = for { subnet <- 1 to subnetCount } yield {
-        val subnetName = f"$hName-NET$subnet%x"
-        val subnetAddr = f"$hAddr:$subnet%x"
+      val subnetName = s"$hName-NET1"
+      val subnetAddr = s"$hAddr:1"
 
-        val services = for { service <- 1 to serviceCount } yield {
-          val serviceName = f"$subnetName-SVC$service%x"
-          val serviceAddr = f"$subnetAddr:$service%x"
+      val services = for { service <- 1 to serviceCount } yield {
+        val serviceName = f"$subnetName-SVC$service%x"
+        val serviceAddr = f"$subnetAddr:$service%x"
 
-          val instances = for {
-            instance <- 1 to subnetCount
-            //            if instance != subnet
-          } yield {
-            val instanceName = f"$serviceName-I$instance%x"
-            Interface(instanceName, ipv6(f"$serviceAddr::$instance%x"))
-          }
-          NetService(Interface(serviceName, ipv6(s"$serviceAddr::")), instances)
+        val instances = for {
+          instance <- 1 to instanceCount
+        } yield {
+          val instanceName = f"$serviceName-I$instance%x"
+          Interface(instanceName, ipv6(f"$serviceAddr::$instance%x"))
         }
-        Subnet(
-          Interface(subnetName, ipv6(s"$subnetAddr::")),
-          services
-        )
+        NetService(Interface(serviceName, ipv6(s"$serviceAddr::")), instances)
       }
 
-      val cannedSubnetWithServiceInstances = {
+      val cannedServiceInstances = {
         val revBytes = "eeee"
-        val netName = f"$hName-NET$revBytes"
-        val netAddr = s"$hAddr:$revBytes"
 
-        val svcName = f"$netName-SVC$revBytes"
-        val svcAddr = s"$netAddr:$revBytes"
+        val svcName = f"$subnetName-SVC$revBytes"
+        val svcAddr = s"$subnetAddr:$revBytes"
 
         val instName = f"$svcName-I1"
-        Subnet(
-          Interface(netName, ipv6(s"$netAddr::")), Seq(
-            NetService(
-              Interface(svcName, ipv6(s"$svcAddr::")), Seq(
-                Interface(instName, ipv6(s"$svcAddr::1"))
-              )
-            )
+        NetService(
+          Interface(svcName, ipv6(s"$svcAddr::")), Seq(
+            Interface(instName, ipv6(s"$svcAddr::1"))
           )
         )
       }
 
+      val subnet = Subnet(
+        Interface(subnetName, ipv6(s"$subnetAddr::")),
+        services :+ cannedServiceInstances
+      )
+
       Host(
         Interface(hName, ipv6(s"$hAddr::")),
-        subnets :+ cannedSubnetWithServiceInstances
+        Seq(subnet)
       )
     }
 
@@ -137,7 +128,9 @@ class TestDocGenerator extends DocProtocol {
         val endpoints = for {
           s <- allServices
           if s.host != service.host // we don't nat to our own host
-        } yield s.interface.addrs.head
+          i <- s.instances
+          a <- i.addrs
+        } yield a
         NATFan(
           name = s"NAT-${service.interface.name}",
           entrypoint = service.interface.addrs.head,
@@ -188,28 +181,28 @@ object TestDocGenerator {
 
     val opts = parser.parse(args, Options()).get
 
-    generator.generateDoc(opts.hosts, opts.subnets, opts.services, opts.ips)
+    generator.generateDoc(opts.hosts, opts.services, opts.instances, opts.ips)
   }
 
-  val parser = new scopt.OptionParser[Options]("scopt") {
-    head("testy")
+  val parser = new scopt.OptionParser[Options]("TestDocGenerator") {
     opt[Int]("hosts") action { (x, c) =>
       c.copy(hosts = x)
-    } text ("hosts is an integer property")
-    opt[Int]("subnets") action { (x, c) =>
-      c.copy(subnets = x)
-    } text ("subnets is an integer property")
+    } text "hosts is an integer property"
     opt[Int]("services") action { (x, c) =>
       c.copy(services = x)
-    } text ("services is an integer property")
-    help("help") text ("prints this usage text")
+    } text "services is an integer property"
+    opt[Int]("instances") action { (x, c) =>
+      c.copy(instances = x)
+    } text "instances is an integer property"
+
+    help("help") text "prints this usage text"
     arg[String]("<IPv4 IP>...") unbounded () optional () action { (x, c) =>
       c.copy(ips = c.ips :+ x)
-    } text ("if tunneling, IPv4s for each host")
+    } text "if tunneling, IPv4s for each host"
   }
 }
 
 case class Options(hosts: Int = 10,
-                   subnets: Int = 10,
                    services: Int = 10,
+                   instances: Int = 10,
                    ips: Seq[String] = Seq())
