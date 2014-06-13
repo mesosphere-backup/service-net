@@ -38,9 +38,13 @@ class TestDocGenerator extends DocProtocol {
 
     val numberOfHosts = math.max(hostCount, hostIpv4Addresses.length)
 
-    val hosts = for { h <- 1 to numberOfHosts } yield {
-      val hName = f"H$h%x"
-      val hAddr = f"2001:db8:$h%x"
+    val names = (0 to (numberOfHosts - 1)) collect {
+      case 0 => "a"
+      case i => s"$i"
+    }
+    val hosts = for (h <- names) yield {
+      val hName = f"H$h"
+      val hAddr = f"2001:db8:$h"
 
       val subnetName = s"$hName-NET1"
       val subnetAddr = s"$hAddr:1"
