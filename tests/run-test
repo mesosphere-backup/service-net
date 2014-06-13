@@ -10,9 +10,23 @@ USAGE
 }; function --help { -h ;}                 # A nice way to handle -h and --help
 
 function main {
-  sbt assembly
+  [[ ${1:-} = --no-build ]] || build_and_bundle
   for num in {0..9}
   do init_host "$num"
+  done
+}
+
+function build_and_bundle {
+  sbt assembly
+  sbt 'project service-net-tests' assembly
+  mkdir -p tests/harness
+  cp target/scala-*/service-net-assembly-*.jar tests/harness
+  cp tests/target/scala-*/service-net-tests-assembly-*.jar tests/harness
+}
+
+function refresh {
+  for host in 0{0..9}.netx-stats.emesos.co
+  do remote "$host" --sudo -- reboot
   done
 }
 
@@ -23,47 +37,32 @@ function globals {
 
 function init_host {
   local num="$1"
+  local hostname=0"$1".netx-stats.emesos.co
 
   [[ $num != 0 ]] || num=a
 
-  local tar=H"$num".properties.tgz
-  local hostname=0"$1".netx-stats.emesos.co
-
-  # ship the service net jar
-  scp target/scala-*/service-net-assembly-*.jar \
-      "$hostname":/tmp/svcnet.jar
-
-  # ship the testing app jar to the server
-  scp tests/target/scala-*/service-net-tests-assembly-*.jar \
-      "$hostname":/tmp/svcnet-test.jar
-
   # tar up the properties files for that host and copy it to the host
-  local tar=H"$num".properties.tgz
-  tar czf "$tar" tests/harness/H"$num"*.properties
-  scp "$tar" "$hostname":/tmp
+  ( cd tests/harness
+    tar -cz *.jar H"$num"-NET1.properties net.json
+  ) | ssh "$hostname" sudo tar -C /tmp -xz
 
-  # copy the network doc to the host
-  scp tests/harness/net.json "$hostname":/tmp
-
-  remote "$hostname" --sudo -- run_svcnet_over_configs "$num" /tmp/"$tar"
+  remote "$hostname" --sudo -- run_svcnet_over_configs "$num"
 }
 
-function run_svcnet_over_configs {
-  local num="$1" tar="$2"
-  tar xzf "$tar"
-  for config in tests/harness/H"$num"-*.properties
-  do
-    local cmd=( java -Dsvcnet.config="$config" -jar /tmp/svcnet.jar )
-    { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
-    "${cmd[@]}" & #>"$config".log &
-    local pid=$!
-    ( sleep 10
-      curl -X PUT http://localhost:9000/doc --data-binary @/tmp/net.json
-    ) && local code=$? || local code=$?
-    kill -TERM "$pid"
-    [[ $code = 0 ]] || return $code
-  done
-}
+function run_svcnet_over_configs {(
+  local num="$1"
+  cd /tmp
+  local config=H"$num"-NET1.properties
+  local cmd=( java -Dsvcnet.config="$config" -jar service-net-assembly-*.jar )
+  { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
+  "${cmd[@]}" &>/tmp/svcnet.log &
+  local pid=$!
+  ( sleep 10
+    curl -X PUT http://localhost:9000/doc --data-binary @/tmp/net.json
+  ) && local code=$? || local code=$?
+  kill -TERM "$pid"
+  [[ $code = 0 ]] || return $code
+)}
 
 ##################################################################### Utilities
 
