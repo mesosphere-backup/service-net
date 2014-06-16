@@ -11,9 +11,9 @@ USAGE
 
 function main {
   [[ ${1:-} = --no-build ]] || build_and_bundle
-#  for num in {0..9}
-#  do init_host "$num"
-#  done
+  for num in {0..9}
+  do init_host "$num"
+  done
 
   # start up the test server on all but one of the hosts
   for num in {1..9}
