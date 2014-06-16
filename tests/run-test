@@ -39,8 +39,6 @@ function init_host {
   local num="$1"
   local hostname=0"$1".netx-stats.emesos.co
 
-  [[ $num != 0 ]] || num=a
-
   # tar up the properties files for that host and copy it to the host
   ( cd tests/harness
     tar -cz *.jar H"$num"-NET1.properties net.json
