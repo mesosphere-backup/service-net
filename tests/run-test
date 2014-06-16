@@ -11,8 +11,20 @@ USAGE
 
 function main {
   [[ ${1:-} = --no-build ]] || build_and_bundle
-  for num in {0..9}
-  do init_host "$num"
+#  for num in {0..9}
+#  do init_host "$num"
+#  done
+
+  # start up the test server on all but one of the hosts
+  for num in {1..9}
+  do start_testing_server "$num"
+  done
+
+  remote "00.netx-stats.emesos.co" --sudo -- run_testing_client "0"
+
+  # shutdown all the test servers
+  for num in {1..9}
+  do stop_testing-server "$num"
   done
 }
 
@@ -59,6 +71,43 @@ function run_svcnet_over_configs {(
     curl -X PUT http://localhost:9000/doc --data-binary @/tmp/net.json
   ) && local code=$? || local code=$?
   kill -TERM "$pid"
+  [[ $code = 0 ]] || return $code
+)}
+
+function start_testing_server {
+  local num="$1"
+  local hostname=0"$1".netx-stats.emesos.co
+
+  remote "$hostname" --sudo -- run_testing_server "$num"
+}
+
+function stop_testing_server {
+  local num="$1"
+  local hostname=0"$1".netx-stats.emesos.co
+
+  remote "$hostname" --sudo -- kill -TERM $(cat /tmp/svcnet-test-server.pid) \
+    && rm -f /tmp/svcnet-test-server.pid
+}
+
+function run_testing_server {(
+  local num="$1"
+  local hex_num=$( printf '%x' num)
+  local addr="2001:db8:$hex_num:eeee::1"
+  cd /tmp
+  local cmd=( java -Dhttp.ip=$addr -jar service-net-tests-assembly-*.jar --server )
+  { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
+  "${cmd[@]}" &>/tmp/svcnet-test-server.log &
+  echo "$?" > svcnet-test-server.pid
+)}
+
+function run_testing_client {(
+  local num="$1"
+  local hex_num=$( printf '%x' num)
+  local addr="2001:db8:$hex_num:eeee::0"
+  cd /tmp
+  local cmd=( java -jar service-net-tests-assembly-*.jar --client "$addr:9797" )
+  { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
+  "${cmd[@]}" &>/tmp/svcnet-test-server.log && local code=$? || local code=$?
   [[ $code = 0 ]] || return $code
 )}
 
