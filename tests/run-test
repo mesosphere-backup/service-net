@@ -10,7 +10,8 @@ USAGE
 }; function --help { -h ;}                 # A nice way to handle -h and --help
 
 function main {
-  [[ ${1:-} = --no-build ]] || build_and_bundle
+  [[ ${1:-} = --no-build ]] || build
+  bundle
   for num in {0..9}
   do init_host "$num"
   done
@@ -32,9 +33,12 @@ function main {
   [[ $code = 0 ]] || return $code
 }
 
-function build_and_bundle {
+function build {
   sbt assembly
   sbt 'project service-net-tests' assembly
+}
+
+function bundle {
   mkdir -p tests/harness
   cp target/scala-*/service-net-assembly-*.jar tests/harness
   cp tests/target/scala-*/service-net-tests-assembly-*.jar tests/harness
