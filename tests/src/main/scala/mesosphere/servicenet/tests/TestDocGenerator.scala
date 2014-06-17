@@ -59,7 +59,7 @@ class TestDocGenerator extends DocProtocol {
       }
 
       val cannedServiceInstances = {
-        val revBytes = "eeee"
+        val revBytes = "e"
 
         val svcName = f"$subnetName-SVC$revBytes"
         val svcAddr = s"$subnetAddr:$revBytes"
