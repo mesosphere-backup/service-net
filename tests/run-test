@@ -12,25 +12,19 @@ USAGE
 function main {
   [[ ${1:-} = --no-build ]] || build
   bundle
+
   for num in {0..9}
-  do init_host "$num"
+  do init_host "$num" &
   done
+  wait
 
-  # start up the test server on all but one of the hosts
-  for num in {0..9}
-  do start_testing_server "$num"
-  done
-
-  ( remote "00.netx-stats.emesos.co" --sudo -- run_testing_client
-  ) && local code=$? || local code=$?
-
-  # shutdown all the test servers
-  for num in {0..9}
-  do stop_testing_server "$num"
-  done
-
-  return $code
+  launch_servers_and_run_tests
 }
+
+function globals {
+  export LC_ALL=en_US.UTF-8                  # A locale that works consistently
+  export LANG="$LC_ALL"
+}; globals
 
 function build {
   sbt assembly
@@ -45,14 +39,26 @@ function bundle {
 
 function refresh {
   for host in 0{0..9}.netx-stats.emesos.co
-  do remote "$host" --sudo -- reboot
+  do remote "$host" --sudo -- reboot &
   done
+  wait
 }
 
-function globals {
-  export LC_ALL=en_US.UTF-8                  # A locale that works consistently
-  export LANG="$LC_ALL"
-}; globals
+function launch_servers_and_run_tests {
+  for num in {0..9}
+  do start_testing_server "$num"
+  done
+
+  remote "00.netx-stats.emesos.co" --sudo -- run_testing_client &&
+  local code=$? || local code=$?
+
+  # shutdown all the test servers
+  for num in {0..9}
+  do stop_testing_server "$num"
+  done
+
+  return $code
+}
 
 function init_host {
   local num="$1"
@@ -89,7 +95,6 @@ function start_testing_server {
 }
 
 function stop_testing_server {
-  local num="$1"
   local hostname=0"$1".netx-stats.emesos.co
 
   remote "$hostname" --sudo -- kill_testing_server
@@ -98,7 +103,7 @@ function stop_testing_server {
 function run_testing_server {(
   local num="$1"
   local hex_num=$( printf '%x' $num)
-  local addr="2001:db8:$hex_num:1:eeee::"
+  local addr="2001:db8:$hex_num:1:e::1"
   cd /tmp
   local cmd=( java -Dhttp.ip=$addr -jar service-net-tests-assembly-*.jar
                    --server )
@@ -107,18 +112,19 @@ function run_testing_server {(
   echo "$!" > svcnet-test-server.pid
 )}
 
-function kill_testing_server {(
-  kill -TERM $(cat /tmp/svcnet-test-server.pid) \
-    && rm -f /tmp/svcnet-test-server.pid
-)}
+function kill_testing_server {
+  kill -TERM "$(cat /tmp/svcnet-test-server.pid)"
+  rm -f /tmp/svcnet-test-server.pid
+}
 
 function run_testing_client {(
-  local addr="2001:db8:0:eeee::"
+  local addr="2001:db8:0:1:e::"
   cd /tmp
-  local cmd=( java -jar service-net-tests-assembly-*.jar
+  local cmd=( java -Dsvcnet.test.requests=1000
+                   -jar service-net-tests-assembly-*.jar
                    --client "[$addr]:9797" )
   { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
-  "${cmd[@]}" &>/tmp/svcnet-test-client.log
+  "${cmd[@]}" >&2
 )}
 
 ##################################################################### Utilities
