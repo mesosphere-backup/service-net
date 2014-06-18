@@ -4,7 +4,6 @@ import com.twitter.util.{ Await, Future, Stopwatch }
 import java.net.InetSocketAddress
 
 import play.api.libs.json._
-import scala.Some
 
 import mesosphere.servicenet.util.Logging
 
@@ -13,6 +12,7 @@ case class BalanceFactorTestResults(clientConnection: InetSocketAddress,
                                     expectedBalanceFactor: Double,
                                     balanceVariance: Double,
                                     durationMillis: Long,
+                                    bwMBs: Double,
                                     pass: Boolean,
                                     failureException: Option[Throwable],
                                     allResults: List[ServerRequestSummary],
@@ -42,6 +42,7 @@ class BalanceFactorTest(client: Client) extends Logging {
     }
 
     val resp = Await.result(f)
+    val duration = stopwatch().inMillis
 
     assert(
       resp.size == requestCount,
@@ -70,17 +71,29 @@ class BalanceFactorTest(client: Client) extends Logging {
           result.percentage <= expectBalanceFactorMax
     }
 
+    val totalBandwidthBytesPerMs = {
+      val totalBytes = resp.map(_.numBytes).sum
+      totalBytes / duration.toDouble
+    }
+
     new BalanceFactorTestResults(
       client.address,
       requestCount,
       expectBalanceFactor,
       expectBalanceFactorDelta,
-      durationMillis = stopwatch().inMillis,
+      bwMBs = bytesPerMs2MegabytesPerS(totalBandwidthBytesPerMs),
+      durationMillis = duration,
       pass = unbalanced.isEmpty,
       failureException = possibleError,
       allResults = results,
       unbalanced = unbalanced
     )
+  }
+
+  private[this] def bytesPerMs2MegabytesPerS(rateBytesPerMs: Double) = {
+    val rateKiloBytesPerMs = rateBytesPerMs / 1024
+    val rateMegaBytesPerMs = rateKiloBytesPerMs / 1024
+    rateMegaBytesPerMs * 1000 // to seconds
   }
 }
 
@@ -117,7 +130,8 @@ trait BalanceFactorTestFormatters {
           "durationMillis" -> JsNumber(o.durationMillis),
           "testPassed" -> JsBoolean(o.pass),
           "results" -> seqServerRequestSummaryFormat.writes(o.allResults),
-          "unbalanced" -> seqServerRequestSummaryFormat.writes(o.unbalanced)
+          "unbalanced" -> seqServerRequestSummaryFormat.writes(o.unbalanced),
+          "totalBwMBs" -> JsNumber(o.bwMBs)
         ))
       }
     }

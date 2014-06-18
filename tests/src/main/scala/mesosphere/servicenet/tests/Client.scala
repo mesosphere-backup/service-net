@@ -9,7 +9,7 @@ import com.twitter.conversions.time.longToTimeableNumber
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.http.{ RequestBuilder, Http }
 import com.twitter.finagle.{ Service, SimpleFilter }
-import com.twitter.util.Future
+import com.twitter.util.{ Stopwatch, Future }
 import org.jboss.netty.handler.codec.http.{ HttpResponse, HttpRequest }
 import org.jboss.netty.handler.codec.http.HttpResponseStatus._
 import play.api.libs.json.Json
@@ -17,7 +17,8 @@ import play.api.libs.json.Json
 import mesosphere.servicenet.util.{ Logging, Properties }
 
 case class TestRequestResponse(requestNumber: Int,
-                               responseServerIp: String)
+                               responseServerIp: String,
+                               numBytes: Long)
 
 class Client(host: String, port: Int) extends Logging {
 
@@ -71,7 +72,8 @@ class Client(host: String, port: Int) extends Logging {
         Future.value(
           new TestRequestResponse(
             requestNumber,
-            response.headers().get("ServerIP")
+            response.headers().get("ServerIP"),
+            response.getContent.readableBytes()
           )
         )
     }
