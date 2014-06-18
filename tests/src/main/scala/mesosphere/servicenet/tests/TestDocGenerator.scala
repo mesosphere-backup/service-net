@@ -78,7 +78,7 @@ class TestDocGenerator extends DocProtocol {
       )
 
       Host(
-        Interface(hName, ipv6(s"$hAddr::")),
+        Interface(hName, ipv6(s"$subnetAddr::")),
         Seq(subnet)
       )
     }
