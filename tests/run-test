@@ -18,7 +18,11 @@ function main {
   done
   wait
 
-  launch_servers_and_run_tests
+  start_servers
+  run_bandwidth_test && local code=$? || local code=$?
+  stop_servers
+
+  return "$code"
 }
 
 function globals {
@@ -44,20 +48,20 @@ function refresh {
   wait
 }
 
-function launch_servers_and_run_tests {
+function start_servers {
   for num in {0..9}
   do start_testing_server "$num"
   done
+}
 
-  remote "00.netx-stats.emesos.co" --sudo -- run_testing_client &&
-  local code=$? || local code=$?
+function run_bandwidth_test {
+  remote "00.netx-stats.emesos.co" --sudo -- run_testing_client
+}
 
-  # shutdown all the test servers
+function stop_servers {
   for num in {0..9}
   do stop_testing_server "$num"
   done
-
-  return $code
 }
 
 function init_host {
@@ -80,9 +84,11 @@ function run_svcnet_over_configs {(
   { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
   "${cmd[@]}" &>/tmp/svcnet.log &
   local pid=$!
-  ( sleep 10
-    curl -X PUT http://localhost:9000/doc --data-binary @/tmp/net.json
-  ) && local code=$? || local code=$?
+  local curl=( curl -X PUT http://localhost:9000/doc
+                           -o /dev/null
+                           -w '%{http_code} %{time_total} %{size_upload}\n'
+                           --data-binary @/tmp/net.json )
+  ( sleep 10 && "${curl[@]}" ) && local code=$? || local code=$?
   kill -TERM "$pid"
   return $code
 )}
