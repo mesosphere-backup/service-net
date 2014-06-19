@@ -27,6 +27,7 @@ class BalanceFactorTest(client: Client) extends Logging {
     requestCount: Int,
     expectBalanceFactorDelta: Double): BalanceFactorTestResults = {
     val stopwatch = Stopwatch.start()
+    val mpStatsCollector = new MpStatCollector(1).start()
 
     var possibleError: Option[Throwable] = None
     val f = {
@@ -43,6 +44,13 @@ class BalanceFactorTest(client: Client) extends Logging {
 
     val resp = Await.result(f)
     val duration = stopwatch().inMillis
+    mpStatsCollector.stop()
+
+    mpStatsCollector.report().toSeq.sortBy(_._1).foreach {
+      case (cpuLabel, list) =>
+        println(s"$cpuLabel ---------- ")
+        println(list.mkString("\t"))
+    }
 
     assert(
       resp.size == requestCount,
