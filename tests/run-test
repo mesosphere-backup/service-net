@@ -13,6 +13,8 @@ function main {
   [[ ${1:-} = --no-build ]] || build
   bundle
 
+  send_bundles
+
   for num in {0..9}
   do init_host "$num" &
   done
@@ -55,7 +57,7 @@ function start_servers {
 }
 
 function run_bandwidth_test {
-  remote "00.netx-stats.emesos.co" --sudo -- run_testing_client
+  remote "00.netx-stats.emesos.co" --sudo -- run_testing_client "$@"
 }
 
 function stop_servers {
@@ -64,15 +66,19 @@ function stop_servers {
   done
 }
 
+function send_bundles {(
+  cd tests/harness
+  for num in {0..9}
+  do
+    ( tar -cz *.jar H"$num"-NET1.properties net.json |
+      ssh 0"$num".netx-stats.emesos.co sudo tar -C /tmp -xz ) &
+  done
+  wait
+)}
+
 function init_host {
   local num="$1"
   local hostname=0"$1".netx-stats.emesos.co
-
-  # tar up the properties files for that host and copy it to the host
-  ( cd tests/harness
-    tar -cz *.jar H"$num"-NET1.properties net.json
-  ) | ssh "$hostname" sudo tar -C /tmp -xz
-
   remote "$hostname" --sudo -- run_svcnet_over_configs "$num"
 }
 
@@ -124,11 +130,12 @@ function kill_testing_server {
 }
 
 function run_testing_client {(
-  local addr="2001:db8:0:1:e::"
+  local addr="${1:-2001:db8:0:1:e::}"
+  [[ $addr != *:* ]] || addr="[$addr]"                  # Wrap IPv6 in brackets
   cd /tmp
   local cmd=( java -Dsvcnet.test.requests=1000
                    -jar service-net-tests-assembly-*.jar
-                   --client "[$addr]:9797" )
+                   --client "$addr:9797" )
   { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
   "${cmd[@]}" >&2
 )}
