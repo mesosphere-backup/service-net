@@ -46,12 +46,6 @@ class BalanceFactorTest(client: Client) extends Logging {
     val duration = stopwatch().inMillis
     mpStatsCollector.stop()
 
-    mpStatsCollector.report().toSeq.sortBy(_._1).foreach {
-      case (cpuLabel, list) =>
-        println(s"$cpuLabel ---------- ")
-        println(list.mkString("\t"))
-    }
-
     assert(
       resp.size == requestCount,
       s"expected: $requestCount actual: ${resp.size}"

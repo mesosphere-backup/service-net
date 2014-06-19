@@ -3,7 +3,8 @@ package mesosphere.servicenet.tests
 import mesosphere.servicenet.util.Logging
 
 import scala.collection.mutable
-import scala.sys.process.{ProcessLogger, Process}
+import scala.sys.process.{ ProcessLogger, Process }
+import scala.collection.mutable.ListBuffer
 
 class MpStatCollector(intervalSeconds: Int) {
 
@@ -19,7 +20,7 @@ class MpStatCollector(intervalSeconds: Int) {
       Process(Seq("mpstat", "-P", "ALL", s"$intervalSeconds"))
         .run(statsCollectorLineHandler, connectInput = true)
     )
-    
+
     this
   }
 
@@ -31,9 +32,9 @@ class MpStatCollector(intervalSeconds: Int) {
     canReport = true
   }
 
-  def report() = {
+  def data(): Results = {
     require(canReport, "The collector must be stopped before reporting")
-    statsCollectorLineHandler.g
+    Results(statsCollectorLineHandler.g.mapValues(_.toSeq).toMap)
   }
 }
 
@@ -67,6 +68,26 @@ object MpStatsCollector {
     Thread.sleep(10000)
 
     collector.stop()
-    collector.report()
+    collector.data()
   }
+}
+
+case class Result(usr: Double, nice: Double, sys: Double,
+                  iowait: Double, irq: Double, soft: Double,
+                  steal: Double, guest: Double, gnice: Double, idle: Double)
+
+object Result {
+  def apply(strings: Seq[String]): Result = {
+    val d = strings.map(_.toDouble)
+    Result(d(0), d(1), d(2), d(3), d(4), d(5), d(6), d(7), d(8), d(9))
+  }
+}
+
+case class Results(all: Result, perCPU: Seq[Result])
+
+object Results {
+  def apply(map: Map[String, Seq[String]]): Results = Results(
+    Result(map("all")),
+    (map - "all").mapValues(Result(_)).toSeq.sortBy(_._1.toDouble).map(_._2)
+  )
 }
