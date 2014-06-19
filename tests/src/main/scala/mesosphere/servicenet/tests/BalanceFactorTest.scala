@@ -131,7 +131,7 @@ trait BalanceFactorTestFormatters {
           "testPassed" -> JsBoolean(o.pass),
           "results" -> seqServerRequestSummaryFormat.writes(o.allResults),
           "unbalanced" -> seqServerRequestSummaryFormat.writes(o.unbalanced),
-          "totalBwMBs" -> JsNumber(o.bwMBs)
+          "totalBandwidthInMBsPerSecond" -> JsNumber(o.bwMBs)
         ))
       }
     }
