@@ -39,7 +39,11 @@ class MpStatCollector(intervalSeconds: Int) {
       }
     }
 
-    MpStatResults(parsedResults.toSeq)
+    MpStatResults(
+      parsedResults.toSeq
+        .map { case (cpuLabel, results) => ResultSummary(cpuLabel, results) }
+        .sortBy(_.cpuLabel)
+    )
   }
 }
 
@@ -78,19 +82,7 @@ private object Result {
   }
 }
 
-case class MpStatResults(all: ResultSummary, perCPU: Seq[ResultSummary])
-object MpStatResults {
-  def apply(seq: Seq[(String, Seq[Result])]): MpStatResults = {
-    val perCPU =
-      seq.map { case (cpuLabel, results) => ResultSummary(cpuLabel, results) }
-        .sortBy(_.cpuLabel)
-
-    MpStatResults(
-      perCPU.find(_.cpuLabel == "all").get,
-      perCPU.filterNot(_.cpuLabel == "all")
-    )
-  }
-}
+case class MpStatResults(results: Seq[ResultSummary])
 
 case class ResultSummary(cpuLabel: String,
                          usr: MetricPercentile,

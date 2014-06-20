@@ -121,13 +121,11 @@ trait BalanceFactorTestFormatters {
     override def reads(json: JsValue): JsResult[MpStatResults] = ???
 
     override def writes(o: MpStatResults): JsValue = {
-      val seqForPerCPU = for {
-        cpu <- o.perCPU
-        value <- forResultSummary(cpu)
-      } yield value
-
       JsObject(
-        forResultSummary(o.all) ++ seqForPerCPU
+        for {
+          cpu <- o.results
+          value <- forResultSummary(cpu)
+        } yield value
       )
     }
 
