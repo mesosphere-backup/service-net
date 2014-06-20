@@ -5,9 +5,9 @@ import mesosphere.servicenet.util.Logging
 import scala.collection.mutable
 import scala.sys.process.{ ProcessLogger, Process }
 
-class MpStatCollector(intervalSeconds: Int) {
+class MpStatCollector(intervalSeconds: Int) extends Logging {
 
-  private val statsCollectorLineHandler = new MpStatsCollectorLineHandler
+  private val statsCollectorLineHandler = new MpStatCollectorLineHandler
   private var process: Option[Process] = None
   private var canStart = true
   private var canReport = false
@@ -34,9 +34,8 @@ class MpStatCollector(intervalSeconds: Int) {
   def data(): MpStatResults = {
     require(canReport, "The collector must be stopped before reporting")
     val parsedResults = statsCollectorLineHandler.grouping.map{
-      case (cpuLabel, rawResults) => {
+      case (cpuLabel, rawResults) =>
         cpuLabel -> rawResults.map(Result(_)).toSeq
-      }
     }
 
     MpStatResults(
@@ -47,23 +46,51 @@ class MpStatCollector(intervalSeconds: Int) {
   }
 }
 
-class MpStatsCollectorLineHandler extends ProcessLogger with Logging {
+class MpStatCollectorLineHandler extends ProcessLogger with Logging {
   val grouping = mutable.Map[String, mutable.ListBuffer[Seq[String]]]()
   override def out(s: => String): Unit = {
-    s.split(" +").toList match {
+    val toMatch = s.split(" +").toList
+    toMatch match {
+      case newLine :: Nil => // no-op empty line
+      case "Linux" :: version :: hostname :: date :: arch :: cpus :: Nil =>
+      // no-op Starting header line
+
+      /* two-different versions/formats of mpstat between some machines */
+
+      // mpstat@10.0.5  -------------------------------------------------------
       case time :: ampm :: "CPU" :: "%usr" :: "%nice" :: "%sys"
         :: "%iowait" :: "%irq" :: "%soft" :: "%steal" :: "%guest" :: "%idle"
         :: Nil => // no-op Header line
       case time :: ampm :: cpuLabel :: usr :: nice :: sys
         :: iowait :: irq :: soft :: steal :: guest :: idle
         :: Nil =>
+        log.trace(">10.0.5+> {}", s)
         val list = grouping.getOrElse(cpuLabel, mutable.ListBuffer())
         grouping.put(
           cpuLabel, list += Seq(
             usr, nice, sys, iowait, irq, soft, steal, guest, idle
           )
         )
-      case _ => // no-op blank line
+
+      // mpstat@10.2.0  /*extra gnice column*/ --------------------------------
+      case time :: ampm :: "CPU" :: "%usr" :: "%nice" :: "%sys"
+        :: "%iowait" :: "%irq" :: "%soft" :: "%steal" :: "%guest"
+        :: "%gnice" :: "%idle"
+        :: Nil => // no-op Header line
+      case time :: ampm :: cpuLabel :: usr :: nice :: sys
+        :: iowait :: irq :: soft :: steal :: guest
+        :: gnice :: idle
+        :: Nil =>
+        log.trace(">10.2.0+> {}", s)
+        val list = grouping.getOrElse(cpuLabel, mutable.ListBuffer())
+        grouping.put(
+          cpuLabel, list += Seq(
+            usr, nice, sys, iowait, irq, soft, steal, guest, idle
+          )
+        )
+      case _ => log.warn(
+        s"unhandled line: ${toMatch.mkString("['", "','", "']")}"
+      )
     }
   }
 
