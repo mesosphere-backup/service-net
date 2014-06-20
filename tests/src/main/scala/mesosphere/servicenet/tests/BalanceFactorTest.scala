@@ -13,6 +13,7 @@ case class BalanceFactorTestResults(clientConnection: InetSocketAddress,
                                     balanceVariance: Double,
                                     durationMillis: Long,
                                     bwMBs: Double,
+                                    cpuMetrics: MpStatResults,
                                     pass: Boolean,
                                     failureException: Option[Throwable],
                                     allResults: List[ServerRequestSummary],
@@ -84,6 +85,7 @@ class BalanceFactorTest(client: Client) extends Logging {
       expectBalanceFactor,
       expectBalanceFactorDelta,
       bwMBs = bytesPerMs2MegabytesPerS(totalBandwidthBytesPerMs),
+      cpuMetrics = mpStatsCollector.data(),
       durationMillis = duration,
       pass = unbalanced.isEmpty,
       failureException = possibleError,
@@ -115,6 +117,35 @@ trait BalanceFactorTestFormatters {
       }
     }
 
+  implicit val mpStatResultsFormat = new Format[MpStatResults] {
+    override def reads(json: JsValue): JsResult[MpStatResults] = ???
+
+    override def writes(o: MpStatResults): JsValue = {
+      val seqForPerCPU = for {
+        cpu <- o.perCPU
+        value <- forResultSummary(cpu)
+      } yield value
+
+      JsObject(
+        forResultSummary(o.all) ++ seqForPerCPU
+      )
+    }
+
+    def forResultSummary(rs: ResultSummary): Seq[(String, JsValue)] = {
+      forMetric(rs.usr, rs.cpuLabel) ++
+        forMetric(rs.sys, rs.cpuLabel) ++
+        forMetric(rs.irq, rs.cpuLabel) ++
+        forMetric(rs.iowait, rs.cpuLabel)
+    }
+
+    def forMetric(o: MetricPercentile, pre: String): Seq[(String, JsValue)] = {
+      Seq(
+        s"system/cpu/$pre/${o.metricLabel}/p50" -> JsNumber(o.p50),
+        s"system/cpu/$pre/${o.metricLabel}/p95" -> JsNumber(o.p95)
+      )
+    }
+  }
+
   implicit val balanceFactorTestResultsFormat =
     new Format[BalanceFactorTestResults] {
       override def reads(json: JsValue): JsResult[BalanceFactorTestResults] = {
@@ -133,7 +164,8 @@ trait BalanceFactorTestFormatters {
           "testPassed" -> JsBoolean(o.pass),
           "results" -> seqServerRequestSummaryFormat.writes(o.allResults),
           "unbalanced" -> seqServerRequestSummaryFormat.writes(o.unbalanced),
-          "totalBandwidthInMBsPerSecond" -> JsNumber(o.bwMBs)
+          "totalBandwidthInMBsPerSecond" -> JsNumber(o.bwMBs),
+          "metrics" -> mpStatResultsFormat.writes(o.cpuMetrics)
         ))
       }
     }

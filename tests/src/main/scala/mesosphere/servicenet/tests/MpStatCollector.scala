@@ -4,7 +4,6 @@ import mesosphere.servicenet.util.Logging
 
 import scala.collection.mutable
 import scala.sys.process.{ ProcessLogger, Process }
-import scala.collection.mutable.ListBuffer
 
 class MpStatCollector(intervalSeconds: Int) {
 
@@ -32,15 +31,20 @@ class MpStatCollector(intervalSeconds: Int) {
     canReport = true
   }
 
-  def data(): Results = {
+  def data(): MpStatResults = {
     require(canReport, "The collector must be stopped before reporting")
-    Results(statsCollectorLineHandler.g.mapValues(_.toSeq).toMap)
+    val parsedResults = statsCollectorLineHandler.grouping.map{
+      case (cpuLabel, rawResults) => {
+        cpuLabel -> rawResults.map(Result(_)).toSeq
+      }
+    }
+
+    MpStatResults(parsedResults.toSeq)
   }
 }
 
 class MpStatsCollectorLineHandler extends ProcessLogger with Logging {
-  val g: mutable.Map[String, mutable.ListBuffer[String]] =
-    mutable.Map[String, mutable.ListBuffer[String]]()
+  val grouping = mutable.Map[String, mutable.ListBuffer[Seq[String]]]()
   override def out(s: => String): Unit = {
     s.split(" +").toList match {
       case time :: ampm :: "CPU" :: "%usr" :: "%nice" :: "%sys"
@@ -49,45 +53,77 @@ class MpStatsCollectorLineHandler extends ProcessLogger with Logging {
       case time :: ampm :: cpuLabel :: usr :: nice :: sys
         :: iowait :: irq :: soft :: steal :: guest :: idle
         :: Nil =>
-        val list = g.getOrElse(cpuLabel, mutable.ListBuffer())
-        g.put(cpuLabel, list += irq)
+        val list = grouping.getOrElse(cpuLabel, mutable.ListBuffer())
+        grouping.put(
+          cpuLabel, list += Seq(
+            usr, nice, sys, iowait, irq, soft, steal, guest, idle
+          )
+        )
       case _ => // no-op blank line
     }
   }
 
   override def buffer[T](f: => T): T = f
-  override def err(s: => String): Unit = ???
+  override def err(s: => String): Unit = { /* no-op */ }
 }
 
-object MpStatsCollector {
-  def main(args: Array[String]) {
-    val collector = new MpStatCollector(2)
+private case class Result(usr: Double, nice: Double, sys: Double,
+                          iowait: Double, irq: Double, soft: Double,
+                          steal: Double, guest: Double, idle: Double)
 
-    collector.start()
-
-    Thread.sleep(10000)
-
-    collector.stop()
-    collector.data()
-  }
-}
-
-case class Result(usr: Double, nice: Double, sys: Double,
-                  iowait: Double, irq: Double, soft: Double,
-                  steal: Double, guest: Double, gnice: Double, idle: Double)
-
-object Result {
+private object Result {
   def apply(strings: Seq[String]): Result = {
     val d = strings.map(_.toDouble)
-    Result(d(0), d(1), d(2), d(3), d(4), d(5), d(6), d(7), d(8), d(9))
+    Result(d(0), d(1), d(2), d(3), d(4), d(5), d(6), d(7), d(8))
   }
 }
 
-case class Results(all: Result, perCPU: Seq[Result])
+case class MpStatResults(all: ResultSummary, perCPU: Seq[ResultSummary])
+object MpStatResults {
+  def apply(seq: Seq[(String, Seq[Result])]): MpStatResults = {
+    val perCPU =
+      seq.map { case (cpuLabel, results) => ResultSummary(cpuLabel, results) }
+        .sortBy(_.cpuLabel)
 
-object Results {
-  def apply(map: Map[String, Seq[String]]): Results = Results(
-    Result(map("all")),
-    (map - "all").mapValues(Result(_)).toSeq.sortBy(_._1.toDouble).map(_._2)
-  )
+    MpStatResults(
+      perCPU.find(_.cpuLabel == "all").get,
+      perCPU.filterNot(_.cpuLabel == "all")
+    )
+  }
 }
+
+case class ResultSummary(cpuLabel: String,
+                         usr: MetricPercentile,
+                         sys: MetricPercentile,
+                         irq: MetricPercentile,
+                         iowait: MetricPercentile)
+object ResultSummary {
+  private val usrMetric = metric("usr", { r: Result => r.usr })_
+  private val sysMetric = metric("sys", { r: Result => r.sys })_
+  private val irqMetric = metric("irq", { r: Result => r.irq })_
+  private val iowaitMetric = metric("iowait", { r: Result => r.iowait })_
+
+  def apply(cpuLabel: String, data: Seq[Result]): ResultSummary = {
+    ResultSummary(
+      cpuLabel,
+      usrMetric(data),
+      sysMetric(data),
+      irqMetric(data),
+      iowaitMetric(data)
+    )
+  }
+
+  def metric(label: String, e: Result => Double)(data: Seq[Result]) = {
+    val distribution = data.map(e).sorted
+    val p50Index = (distribution.length * 0.50).toInt
+    val p95Index = (distribution.length * 0.95).toInt
+    MetricPercentile(
+      label,
+      distribution(p50Index),
+      distribution(p95Index)
+    )
+  }
+
+}
+
+case class MetricPercentile(metricLabel: String, p50: Double, p95: Double)
