@@ -90,10 +90,10 @@ function run_svcnet_over_configs {(
   { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
   "${cmd[@]}" &>/tmp/svcnet.log &
   local pid=$!
-  local curl=( curl -X PUT http://localhost:9000/doc
-                           -o /dev/null
-                           -w '%{http_code} %{time_total} %{size_upload}\n'
-                           --data-binary @/tmp/net.json )
+  local curl=( curl -s -S -X PUT http://localhost:9000/doc
+                             -o /dev/null
+                             -w '%{http_code} %{time_total} %{size_upload}\n'
+                             --data-binary @/tmp/net.json )
   ( sleep 10 && "${curl[@]}" ) && local code=$? || local code=$?
   kill -TERM "$pid"
   return $code
