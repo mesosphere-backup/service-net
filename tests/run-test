@@ -137,7 +137,7 @@ function run_testing_client {(
                    -jar service-net-tests-assembly-*.jar
                    --client "$addr:9797" )
   { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2
-  "${cmd[@]}" >&2
+  "${cmd[@]}"
 )}
 
 ##################################################################### Utilities
