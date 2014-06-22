@@ -59,15 +59,16 @@ class Client(host: String, port: Int) extends Logging {
     newClient
   }
 
-  private[this] def get(uri: Uri): HttpRequest = {
+  private[this] def get(uri: Uri, size: Int): HttpRequest = {
     val uriString = s"http://$host:$port/${uri.toString()}"
     RequestBuilder()
+      .addHeader("Range", s"bytes=1-$size")
       .url(uriString.replaceAll("(?<!:)//", "/"))
       .buildGet()
   }
 
-  def ping(requestNumber: Int = 0) = {
-    client(get("/" ? ("requestNumber" -> requestNumber))) flatMap {
+  def ping(size: Int = 1024 * 1024, requestNumber: Int = 0) = {
+    client(get("/" ? ("requestNumber" -> requestNumber), size)) flatMap {
       case response =>
         Future.value(
           new TestRequestResponse(
@@ -97,8 +98,12 @@ object Client extends Logging with BalanceFactorTestFormatters {
     }
 
     val requestCount = Properties.underlying.getOrElse(
-      "svcnet.test.requests",
+      "svcnet.test.request.count",
       "100"
+    ).toInt
+    val requestSize = 1024 * Properties.underlying.getOrElse(
+      "svcnet.test.request.kB",
+      "1024"
     ).toInt
     val balanceVariance = Properties.underlying.getOrElse(
       "svcnet.test.balance.variance",
@@ -108,13 +113,15 @@ object Client extends Logging with BalanceFactorTestFormatters {
     connection match {
       case Some(t) =>
         val (host, port) = t
-        log.info(s"svcnet.test.requests = $requestCount")
+        log.info(s"svcnet.test.request.count = $requestCount")
+        log.info(s"svcnet.test.request.kB = ${requestSize / 1024}")
         log.info(s"svcnet.test.balance.variance = $balanceVariance")
-        log.info(s"clientConnection = $host:$port")
+        log.info(s"connection = $host:$port")
 
         val client = new Client(host, port)
         val results = new BalanceFactorTest(client).runBalanceFactorTest(
           requestCount,
+          requestSize,
           balanceVariance
         )
         println(Json.prettyPrint(Json.toJson(results)))

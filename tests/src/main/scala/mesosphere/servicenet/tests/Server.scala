@@ -3,7 +3,7 @@ package mesosphere.servicenet.tests
 import mesosphere.servicenet.util.{ Logging, Properties }
 import scala.util.Random
 import unfiltered.jetty.Http
-import unfiltered.request.{ GET, Seg, Path }
+import unfiltered.request.{ GET, Seg, Path, Range }
 import unfiltered.response._
 
 object Server extends Logging {
@@ -18,14 +18,34 @@ object Server extends Logging {
       array
     }
 
+    lazy val serverIP = ResponseHeader("ServerIP", Set(s"$addr"))
+
+    val RangeBytes = "^bytes=([0-9]+)-([0-9]+)$".r
+
     def intent = {
       case req @ Path(Seg(Nil)) => req match {
-        case GET(_) =>
-          ResponseHeader("ServerIP", Set(s"$addr")) ~>
-            ContentType("application/octet-stream") ~>
-            ContentLength(s"${data.length}") ~>
-            ResponseBytes(data)
+        case GET(Range(List(s))) =>
+          log info s"Range: $s"
+          s match {
+            case RangeBytes(begin, end) =>
+              log info s"size: ${1 + end.toInt - begin.toInt}"
+              response(1 + end.toInt - begin.toInt)
+            case _ => serverIP ~> BadRequest ~>
+              ResponseString("Malformed or multiple Range headers")
+          }
+        case GET(_) => response(data.size)
       }
+    }
+
+    def response(size: Int) = if (size <= data.size) {
+      serverIP ~>
+        ContentType("application/octet-stream") ~>
+        ContentLength(s"$size") ~>
+        ResponseBytes(data.slice(0, size))
+    }
+    else {
+      serverIP ~> RequestedRangeNotSatisfiable ~>
+        ResponseString(s"Please request at most ${data.size} bytes")
     }
   }
 

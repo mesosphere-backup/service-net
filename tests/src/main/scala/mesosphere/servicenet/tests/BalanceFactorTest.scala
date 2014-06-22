@@ -13,7 +13,7 @@ case class BalanceFactorTestResults(clientConnection: InetSocketAddress,
                                     balanceVariance: Double,
                                     durationMillis: Long,
                                     bwMBs: Double,
-                                    cpuMetrics: MpStatResults,
+                                    cpuMetrics: MpStatResults = MpStatResults(),
                                     pass: Boolean,
                                     failureException: Option[Throwable],
                                     allResults: List[ServerRequestSummary],
@@ -26,6 +26,7 @@ case class ServerRequestSummary(serverIp: String,
 class BalanceFactorTest(client: Client) extends Logging {
   def runBalanceFactorTest(
     requestCount: Int,
+    requestSize: Int,
     expectBalanceFactorDelta: Double): BalanceFactorTestResults = {
     val stopwatch = Stopwatch.start()
     val mpStatsCollector = new MpStatCollector(1).start()
@@ -34,7 +35,7 @@ class BalanceFactorTest(client: Client) extends Logging {
     val f = {
       Future.collect(
         1 to requestCount map {
-          i => client.ping(i)
+          i => client.ping(requestSize, i)
         }
       ) onFailure {
           case t: Throwable =>
@@ -84,7 +85,7 @@ class BalanceFactorTest(client: Client) extends Logging {
       requestCount,
       expectBalanceFactor,
       expectBalanceFactorDelta,
-      bwMBs = bytesPerMs2MegabytesPerS(totalBandwidthBytesPerMs),
+      bwMBs = 1000 * (totalBandwidthBytesPerMs / (1024 * 1024)),
       cpuMetrics = mpStatsCollector.data(),
       durationMillis = duration,
       pass = unbalanced.isEmpty,
@@ -92,12 +93,6 @@ class BalanceFactorTest(client: Client) extends Logging {
       allResults = results,
       unbalanced = unbalanced
     )
-  }
-
-  private[this] def bytesPerMs2MegabytesPerS(rateBytesPerMs: Double) = {
-    val rateKiloBytesPerMs = rateBytesPerMs / 1024
-    val rateMegaBytesPerMs = rateKiloBytesPerMs / 1024
-    rateMegaBytesPerMs * 1000 // to seconds
   }
 }
 
@@ -152,6 +147,7 @@ trait BalanceFactorTestFormatters {
 
       override def writes(o: BalanceFactorTestResults): JsValue = {
         val conn = o.clientConnection
+        val qps = 1000 * (o.requestCount.toDouble / o.durationMillis.toDouble)
         JsObject(Seq(
           "connection" -> JsString(s"${conn.getHostName}:${conn.getPort}"),
           "resolvedAddress" -> JsString(conn.getAddress.getHostAddress),
@@ -163,6 +159,7 @@ trait BalanceFactorTestFormatters {
           "results" -> seqServerRequestSummaryFormat.writes(o.allResults),
           "unbalanced" -> seqServerRequestSummaryFormat.writes(o.unbalanced),
           "totalBandwidthInMBsPerSecond" -> JsNumber(o.bwMBs),
+          "requestsPerSecond" -> JsNumber(qps),
           "metrics" -> mpStatResultsFormat.writes(o.cpuMetrics)
         ))
       }

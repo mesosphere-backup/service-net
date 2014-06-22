@@ -114,8 +114,7 @@ function stop_testing_server {
 
 function run_testing_server {(
   local num="$1"
-  local hex_num=$( printf '%x' $num)
-  local addr="2001:db8:$hex_num:1:e::1"
+  local addr="2001:db8:$(printf %x $num):1:e::1"
   cd /tmp
   local cmd=( java -Dhttp.ip=$addr -jar service-net-tests-assembly-*.jar
                    --server )
@@ -133,7 +132,8 @@ function run_testing_client {(
   local addr="${1:-2001:db8:0:1:e::}"
   [[ $addr != *:* ]] || addr="[$addr]"                  # Wrap IPv6 in brackets
   cd /tmp
-  local cmd=( java -Dsvcnet.test.requests=1000
+  local cmd=( java -Dsvcnet.test.request.count=1000
+                   -Dsvcnet.test.request.kB=10240
                    -jar service-net-tests-assembly-*.jar
                    --client "$addr:9797" )
   { printf ' :;' ; printf ' %q' "${cmd[@]}" ; echo ;} >&2

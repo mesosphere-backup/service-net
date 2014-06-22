@@ -109,7 +109,7 @@ private object Result {
   }
 }
 
-case class MpStatResults(results: Seq[ResultSummary])
+case class MpStatResults(results: Seq[ResultSummary] = Seq())
 
 case class ResultSummary(cpuLabel: String,
                          usr: MetricPercentile,
